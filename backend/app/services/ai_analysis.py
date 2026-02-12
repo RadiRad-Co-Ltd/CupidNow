@@ -13,7 +13,7 @@ def _get_client():
     global _client
     if _client is None:
         import anthropic
-        _client = anthropic.Anthropic()
+        _client = anthropic.AsyncAnthropic()
     return _client
 
 
@@ -93,7 +93,7 @@ async def analyze_with_ai(
     prompt = build_prompt(sampled, persons)
     client = _get_client()
 
-    response = client.messages.create(
+    response = await client.messages.create(
         model="claude-sonnet-4-5-20250929",
         max_tokens=1500,
         messages=[{"role": "user", "content": prompt}],

@@ -51,13 +51,11 @@ export function ReplyBehavior({ result }: Props) {
   ];
 
   // --- Speed distribution chart data ---
-  const speedData = SPEED_LABELS.map((label, idx) => {
-    const keys = Object.keys(replyBehavior.speedDistribution);
-    return {
-      label,
-      count: replyBehavior.speedDistribution[keys[idx]] ?? 0,
-    };
-  });
+  const SPEED_KEYS = ["under1min", "1to5min", "5to30min", "30to60min", "over60min"];
+  const speedData = SPEED_LABELS.map((label, idx) => ({
+    label,
+    count: replyBehavior.speedDistribution[SPEED_KEYS[idx]] ?? 0,
+  }));
 
   // --- Topic initiator ---
   const initiatorEntries = Object.entries(replyBehavior.topicInitiator);

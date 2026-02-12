@@ -21,8 +21,8 @@ export function TrendChart({ result }: Props) {
   // Normalize trend data into a predictable shape
   const chartData = trend.map((entry) => ({
     period: String(entry.period ?? ""),
-    [person1]: Number(entry.person1Count ?? entry[person1] ?? 0),
-    [person2]: Number(entry.person2Count ?? entry[person2] ?? 0),
+    [person1]: Number(entry[person1] ?? 0),
+    [person2]: Number(entry[person2] ?? 0),
   }));
 
   // Compute a simple insight if enough data is present

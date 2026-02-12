@@ -20,7 +20,7 @@ export function FileDropzone({ onFileSelected, disabled }: Props) {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) onFileSelected(file);
+    if (file?.name.endsWith(".txt")) onFileSelected(file);
   };
 
   return (

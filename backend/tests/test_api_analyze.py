@@ -1,33 +1,22 @@
-import base64
-import os
 from pathlib import Path
-from app.services.encryption import encrypt_aes_gcm
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sample_chat.txt"
 
 
 async def test_analyze_returns_200(client):
-    key = os.urandom(32)
-    plaintext = FIXTURE.read_bytes()
-    encrypted = encrypt_aes_gcm(plaintext, key)
-
     resp = await client.post(
         "/api/analyze",
-        data={"key": base64.b64encode(key).decode(), "skip_ai": "true"},
-        files={"file": ("chat.txt.enc", encrypted, "application/octet-stream")},
+        data={"skip_ai": "true"},
+        files={"file": ("chat.txt", FIXTURE.read_bytes(), "text/plain")},
     )
     assert resp.status_code == 200
 
 
-async def test_analyze_returns_basic_stats(client):
-    key = os.urandom(32)
-    plaintext = FIXTURE.read_bytes()
-    encrypted = encrypt_aes_gcm(plaintext, key)
-
+async def test_analyze_returns_all_sections(client):
     resp = await client.post(
         "/api/analyze",
-        data={"key": base64.b64encode(key).decode(), "skip_ai": "true"},
-        files={"file": ("chat.txt.enc", encrypted, "application/octet-stream")},
+        data={"skip_ai": "true"},
+        files={"file": ("chat.txt", FIXTURE.read_bytes(), "text/plain")},
     )
     data = resp.json()
     assert "basicStats" in data
@@ -37,15 +26,20 @@ async def test_analyze_returns_basic_stats(client):
     assert "persons" in data
 
 
-async def test_analyze_bad_key_returns_400(client):
-    key = os.urandom(32)
-    wrong_key = os.urandom(32)
-    plaintext = FIXTURE.read_bytes()
-    encrypted = encrypt_aes_gcm(plaintext, key)
-
+async def test_analyze_invalid_file_returns_400(client):
     resp = await client.post(
         "/api/analyze",
-        data={"key": base64.b64encode(wrong_key).decode(), "skip_ai": "true"},
-        files={"file": ("chat.txt.enc", encrypted, "application/octet-stream")},
+        data={"skip_ai": "true"},
+        files={"file": ("chat.txt", b"just some random text", "text/plain")},
     )
     assert resp.status_code == 400
+
+
+async def test_analyze_oversized_file_returns_413(client):
+    big = b"x" * (11 * 1024 * 1024)
+    resp = await client.post(
+        "/api/analyze",
+        data={"skip_ai": "true"},
+        files={"file": ("chat.txt", big, "text/plain")},
+    )
+    assert resp.status_code == 413

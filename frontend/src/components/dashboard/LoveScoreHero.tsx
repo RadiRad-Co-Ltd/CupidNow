@@ -50,9 +50,15 @@ export function LoveScoreHero({ result }: Props) {
           🔥
         </span>
         <span className="font-body text-[14px] font-semibold text-white">
-          {ai
-            ? "超來電！互動熱度超過 92% 的人"
-            : "等待 AI 分析中..."}
+          {!ai
+            ? "等待 AI 分析中..."
+            : score !== undefined && score >= 80
+              ? "超來電！互動熱度超過 92% 的人"
+              : score !== undefined && score >= 60
+                ? "有感覺！互動頻率很不錯"
+                : score !== undefined && score >= 40
+                  ? "還在觀察中，繼續加油！"
+                  : "互動偏少，要多聊聊喔！"}
         </span>
       </div>
 

@@ -41,3 +41,25 @@ def test_topic_initiator():
     init = result["topicInitiator"]
     total = sum(init[p] for p in init)
     assert total >= 1
+
+
+def test_single_message_returns_empty_result():
+    """A single message should return zeroed-out results."""
+    from app.services.parser import Message
+    from datetime import datetime
+
+    parsed = {
+        "messages": [Message(timestamp=datetime(2024, 1, 1, 9, 0), sender="A", content="hi", msg_type="text")],
+        "persons": ["A", "B"],
+        "calls": [],
+    }
+    result = compute_reply_behavior(parsed)
+    assert result["instantReplyRate"]["A"] == 0
+    assert result["instantReplyRate"]["B"] == 0
+    assert result["avgReplyTime"]["A"] == 0
+
+
+def test_empty_messages_returns_empty_result():
+    parsed = {"messages": [], "persons": ["A", "B"], "calls": []}
+    result = compute_reply_behavior(parsed)
+    assert result["instantReplyRate"]["A"] == 0

@@ -6,11 +6,8 @@ dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.34",
     "python-multipart>=0.0.18",
-    "pycryptodome>=3.21",
-    "pandas>=2.2",
     "jieba>=0.42",
     "anthropic>=0.43",
-    "sse-starlette>=2.2",
 ]
 
 [project.optional-dependencies]

@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FileDropzone } from "../components/FileDropzone";
-import { encryptFile } from "../lib/encryption";
 import type { AnalysisResult } from "../types/analysis";
+
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 interface Props {
   onResult: (result: AnalysisResult) => void;
@@ -27,17 +28,21 @@ export function UploadPage({ onResult }: Props) {
     setProgress(0);
 
     try {
-      // Encrypt
-      setProgress(10);
-      const { encrypted, key } = await encryptFile(file);
+      if (file.size > 10 * 1024 * 1024) {
+        setError("檔案太大，最大限制 10MB");
+        setLoading(false);
+        return;
+      }
 
-      // Upload
-      setProgress(30);
+      setProgress(20);
+
       const formData = new FormData();
-      formData.append("file", new Blob([encrypted]), "chat.txt.enc");
-      formData.append("key", key);
+      formData.append("file", file);
 
-      const resp = await fetch("/api/analyze", { method: "POST", body: formData });
+      const resp = await fetch(`${API_BASE}/api/analyze`, {
+        method: "POST",
+        body: formData,
+      });
 
       setProgress(90);
       if (!resp.ok) {
@@ -58,14 +63,12 @@ export function UploadPage({ onResult }: Props) {
 
   return (
     <div className="min-h-screen bg-bg-page">
-      {/* Header */}
       <header className="flex items-center justify-between px-20 py-5">
         <span className="font-heading text-2xl font-extrabold text-text-primary">
           💕 CupidNow
         </span>
       </header>
 
-      {/* Hero */}
       <main className="mx-auto flex max-w-2xl flex-col items-center gap-8 px-4 pt-16">
         <span className="rounded-full bg-rose-soft px-4 py-1 text-sm font-semibold text-rose-primary">
           Powered by AI Analysis
@@ -97,9 +100,8 @@ export function UploadPage({ onResult }: Props) {
           <p className="rounded-xl bg-red-50 px-4 py-2 text-sm text-red-600">{error}</p>
         )}
 
-        {/* Privacy badges */}
         <div className="flex flex-wrap justify-center gap-4 pt-8">
-          {["🔒 AES-256 加密傳輸", "🗑️ 分析完即刪除", "🚫 不儲存任何明文", "👤 無需註冊帳號"].map((t) => (
+          {["🔒 HTTPS 加密傳輸", "🗑️ 分析完即銷毀", "💾 純記憶體處理", "👤 無需註冊帳號"].map((t) => (
             <span key={t} className="rounded-full border border-border-light bg-white px-4 py-2 text-sm font-semibold text-text-primary">
               {t}
             </span>

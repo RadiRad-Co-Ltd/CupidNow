@@ -56,3 +56,10 @@ def test_person_balance():
     assert "words" in bal
     # Each has person1, person2 with percentage
     assert bal["messages"]["小美"]["percent"] > 0
+
+
+def test_empty_messages():
+    parsed = {"messages": [], "persons": [], "calls": []}
+    result = compute_basic_stats(parsed)
+    assert result["messageCount"]["total"] == 0
+    assert result["dateRange"]["totalDays"] == 0
