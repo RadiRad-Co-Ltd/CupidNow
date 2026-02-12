@@ -69,23 +69,23 @@ export function GoodnightAnalysis({ result }: Props) {
   ];
 
   return (
-    <section className="w-full bg-white" style={{ padding: "48px 80px" }}>
-      <h2 className="mb-8 font-heading text-[24px] font-bold text-text-primary">
+    <section className="w-full bg-white px-4 py-8 sm:px-8 md:px-12 md:py-12 lg:px-20">
+      <h2 className="mb-6 sm:mb-8 font-heading text-[20px] sm:text-[24px] font-bold text-text-primary">
         晚安分析
       </h2>
 
-      <div className="grid grid-cols-4 gap-5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
         {cards.map((card) => (
           <div
             key={card.label}
-            className="flex flex-col items-center justify-center gap-4 rounded-[20px] p-7"
+            className="flex flex-col items-center justify-center gap-3 sm:gap-4 rounded-[16px] sm:rounded-[20px] p-5 sm:p-7"
             style={{
               background:
                 "linear-gradient(150deg, #1A1035 0%, #2D1B4E 100%)",
             }}
           >
             <card.icon className="h-7 w-7" style={{ color: card.iconColor }} />
-            <span className="font-heading text-[22px] font-extrabold text-white text-center">
+            <span className="font-heading text-[18px] sm:text-[22px] font-extrabold text-white text-center">
               {card.value}
             </span>
             <span className="font-body text-[13px] font-medium text-white/70 text-center">

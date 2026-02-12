@@ -71,18 +71,18 @@ export function UploadPage({ onResult }: Props) {
 
   return (
     <div className="min-h-screen bg-bg-page">
-      <header className="flex items-center justify-between px-20 py-5">
+      <header className="flex items-center justify-between px-4 sm:px-8 lg:px-20 py-4 sm:py-5">
         <div className="flex items-center gap-2">
           <img src="/logo.png" alt="CupidNow" className="h-10" />
         </div>
       </header>
 
-      <main className="mx-auto flex max-w-2xl flex-col items-center gap-8 px-4 pt-16">
+      <main className="mx-auto flex max-w-2xl flex-col items-center gap-6 sm:gap-8 px-4 pt-8 sm:pt-16">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-soft px-4 py-1 text-sm font-semibold text-rose-primary">
           <Sparkles className="h-4 w-4" />
           Powered by AI Analysis
         </span>
-        <h1 className="text-center font-heading text-5xl font-extrabold leading-tight text-text-primary">
+        <h1 className="text-center font-heading text-3xl sm:text-4xl md:text-5xl font-extrabold leading-tight text-text-primary">
           用數據，看見心動的溫度
         </h1>
         <p className="text-center text-lg text-text-secondary">

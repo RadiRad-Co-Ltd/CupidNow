@@ -24,14 +24,14 @@ export function SentimentAnalysis({ result }: Props) {
   const insight = result.aiAnalysis?.insight;
 
   return (
-    <section className="w-full bg-white" style={{ padding: "48px 80px" }}>
-      <h2 className="mb-8 font-heading text-[24px] font-bold text-text-primary">
+    <section className="w-full bg-white px-4 py-8 sm:px-8 md:px-12 md:py-12 lg:px-20">
+      <h2 className="mb-6 sm:mb-8 font-heading text-[20px] sm:text-[24px] font-bold text-text-primary">
         AI 情緒分析
       </h2>
 
-      <div className="flex gap-5">
+      <div className="flex flex-col md:flex-row gap-5">
         {/* Left: Sentiment distribution */}
-        <div className="flex-1 rounded-[20px] border border-border-light bg-white p-7">
+        <div className="flex-1 rounded-[16px] sm:rounded-[20px] border border-border-light bg-white p-5 sm:p-7">
           <h3 className="mb-5 font-heading text-[16px] font-semibold text-text-primary">
             情緒分布
           </h3>
@@ -64,7 +64,7 @@ export function SentimentAnalysis({ result }: Props) {
 
         {/* Right: AI Insight card */}
         <div
-          className="flex w-[360px] shrink-0 flex-col gap-5 rounded-[20px] p-7"
+          className="flex w-full md:w-[360px] md:shrink-0 flex-col gap-5 rounded-[16px] sm:rounded-[20px] p-5 sm:p-7"
           style={{
             background:
               "linear-gradient(160deg, #E8457E 0%, #9F7AEA 100%)",

@@ -71,23 +71,23 @@ export function BasicStatsCards({ result }: Props) {
   ];
 
   return (
-    <section className="w-full bg-white" style={{ padding: "48px 80px" }}>
+    <section className="w-full bg-white px-4 py-8 sm:px-8 md:px-12 md:py-12 lg:px-20">
       {/* Header */}
-      <div className="mb-8 flex items-center justify-between">
-        <h2 className="font-heading text-[24px] font-bold text-text-primary">
+      <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+        <h2 className="font-heading text-[20px] sm:text-[24px] font-bold text-text-primary">
           基礎統計
         </h2>
-        <span className="font-body text-[14px] text-text-secondary">
+        <span className="font-body text-[13px] sm:text-[14px] text-text-secondary">
           {dateRange.start} — {dateRange.end} · 共 {dateRange.totalDays} 天
         </span>
       </div>
 
       {/* Cards grid */}
-      <div className="grid grid-cols-4 gap-5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
         {cards.map((card) => (
           <div
             key={card.label}
-            className="flex flex-col gap-3 rounded-[20px] border border-border-light bg-white p-6"
+            className="flex flex-col gap-2 sm:gap-3 rounded-[16px] sm:rounded-[20px] border border-border-light bg-white p-4 sm:p-6"
           >
             {/* Icon row with badge */}
             <div className="flex items-center justify-between">
@@ -100,7 +100,7 @@ export function BasicStatsCards({ result }: Props) {
             </div>
 
             {/* Value */}
-            <div className="font-heading text-[36px] font-extrabold leading-none text-text-primary">
+            <div className="font-heading text-[24px] sm:text-[30px] lg:text-[36px] font-extrabold leading-none text-text-primary">
               {card.value.toLocaleString()}
             </div>
 

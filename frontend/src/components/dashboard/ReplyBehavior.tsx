@@ -43,12 +43,12 @@ export function ReplyBehavior({ result }: Props) {
   const topicLeader = herTopics >= himTopics ? "她" : "他";
 
   return (
-    <section className="bg-white" style={{ padding: "48px 80px" }}>
-      <h2 className="mb-8 font-heading text-[24px] font-bold text-text-primary">
+    <section className="bg-white px-4 py-8 sm:px-8 md:px-12 md:py-12 lg:px-20">
+      <h2 className="mb-6 sm:mb-8 font-heading text-[20px] sm:text-[24px] font-bold text-text-primary">
         回覆行為分析
       </h2>
 
-      <div className="grid grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* ---- Left Column ---- */}
         <div className="flex flex-col gap-5">
           {/* Instant reply rate card */}
@@ -87,9 +87,9 @@ export function ReplyBehavior({ result }: Props) {
           </div>
 
           {/* Fun stats row */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col items-center justify-center gap-2 rounded-[20px] border border-border-light bg-white p-6">
-              <span className="font-heading text-[32px] font-extrabold leading-none" style={{ color: "#E87461" }}>
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <div className="flex flex-col items-center justify-center gap-2 rounded-[16px] sm:rounded-[20px] border border-border-light bg-white p-4 sm:p-6">
+              <span className="font-heading text-[24px] sm:text-[32px] font-extrabold leading-none" style={{ color: "#E87461" }}>
                 {totalTopics}
               </span>
               <span className="font-body text-[13px] font-medium text-text-secondary">話題發起次數</span>
@@ -97,8 +97,8 @@ export function ReplyBehavior({ result }: Props) {
                 她 {herTopics} · 他 {himTopics}
               </span>
             </div>
-            <div className="flex flex-col items-center justify-center gap-2 rounded-[20px] border border-border-light bg-white p-6">
-              <span className="font-heading text-[32px] font-extrabold leading-none text-teal-positive">
+            <div className="flex flex-col items-center justify-center gap-2 rounded-[16px] sm:rounded-[20px] border border-border-light bg-white p-4 sm:p-6">
+              <span className="font-heading text-[24px] sm:text-[32px] font-extrabold leading-none text-teal-positive">
                 {topicPct}%
               </span>
               <span className="font-body text-[13px] font-medium text-text-secondary">
@@ -140,17 +140,17 @@ export function ReplyBehavior({ result }: Props) {
           </div>
 
           {/* Average reply time cards */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col items-center justify-center gap-2 rounded-[20px] border border-border-light bg-white p-6">
-              <span className="font-heading text-[28px] font-extrabold leading-none text-rose-primary">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <div className="flex flex-col items-center justify-center gap-2 rounded-[16px] sm:rounded-[20px] border border-border-light bg-white p-4 sm:p-6">
+              <span className="font-heading text-[22px] sm:text-[28px] font-extrabold leading-none text-rose-primary">
                 {fmtCompact(replyBehavior.avgReplyTime[person1] ?? 0)}
               </span>
               <span className="font-body text-[13px] font-medium text-text-secondary">
                 她的平均回覆
               </span>
             </div>
-            <div className="flex flex-col items-center justify-center gap-2 rounded-[20px] border border-border-light bg-white p-6">
-              <span className="font-heading text-[28px] font-extrabold leading-none text-purple-accent">
+            <div className="flex flex-col items-center justify-center gap-2 rounded-[16px] sm:rounded-[20px] border border-border-light bg-white p-4 sm:p-6">
+              <span className="font-heading text-[22px] sm:text-[28px] font-extrabold leading-none text-purple-accent">
                 {fmtCompact(replyBehavior.avgReplyTime[person2] ?? 0)}
               </span>
               <span className="font-body text-[13px] font-medium text-text-secondary">

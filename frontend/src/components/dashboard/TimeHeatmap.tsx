@@ -64,56 +64,61 @@ export function TimeHeatmap({ result }: Props) {
   });
 
   return (
-    <div className="rounded-[20px] border border-border-light bg-white p-6" style={{ padding: "24px 32px" }}>
-      {/* Time labels header */}
-      <div className="flex items-center gap-1 mb-1" style={{ paddingLeft: 56 }}>
-        {TIME_LABELS.map((label, i) => (
-          <div
-            key={label}
-            className={`flex-1 text-center font-body text-[11px] font-semibold ${
-              i >= 6 ? "text-text-primary" : "text-text-muted"
-            }`}
-          >
-            {label}
-          </div>
-        ))}
-      </div>
-
-      {/* Heatmap rows */}
-      <div className="flex flex-col gap-1">
-        {bucketed.map((row, dayIdx) => (
-          <div key={dayIdx} className="flex items-center gap-1">
-            <div className="w-[48px] shrink-0 font-body text-[12px] font-semibold text-text-secondary">
-              {DAY_LABELS[dayIdx]}
-            </div>
-            {row.map((value, colIdx) => (
+    <div className="rounded-[16px] sm:rounded-[20px] border border-border-light bg-white p-4 sm:p-6 md:px-8">
+      {/* Scrollable on mobile */}
+      <div className="overflow-x-auto -mx-1">
+        <div className="min-w-[400px]">
+          {/* Time labels header */}
+          <div className="flex items-center gap-1 mb-1 pl-10 sm:pl-14">
+            {TIME_LABELS.map((label, i) => (
               <div
-                key={colIdx}
-                className="h-8 flex-1 rounded-[6px]"
-                style={{ backgroundColor: heatColor(value, max) }}
-                title={`${DAY_LABELS[dayIdx]} ${TIME_LABELS[colIdx]}：${value} 則`}
-              />
+                key={label}
+                className={`flex-1 text-center font-body text-[10px] sm:text-[11px] font-semibold ${
+                  i >= 6 ? "text-text-primary" : "text-text-muted"
+                }`}
+              >
+                {label}
+              </div>
             ))}
           </div>
-        ))}
-      </div>
 
-      {/* Legend */}
-      <div className="mt-4 flex items-center justify-between" style={{ paddingLeft: 56 }}>
-        <div className="flex items-center gap-2">
-          <span className="font-body text-[12px] text-text-muted">少</span>
-          <div
-            className="h-3 w-40 rounded-[6px]"
-            style={{
-              background:
-                "linear-gradient(to right, #E8457E08, #E8457E40, #E8457E80, #E8457ECC, #E8457E)",
-            }}
-          />
-          <span className="font-body text-[12px] text-text-muted">多</span>
+          {/* Heatmap rows */}
+          <div className="flex flex-col gap-1">
+            {bucketed.map((row, dayIdx) => (
+              <div key={dayIdx} className="flex items-center gap-1">
+                <div className="w-10 sm:w-12 shrink-0 font-body text-[11px] sm:text-[12px] font-semibold text-text-secondary">
+                  {DAY_LABELS[dayIdx]}
+                </div>
+                {row.map((value, colIdx) => (
+                  <div
+                    key={colIdx}
+                    className="h-6 sm:h-8 flex-1 rounded-[4px] sm:rounded-[6px]"
+                    style={{ backgroundColor: heatColor(value, max) }}
+                    title={`${DAY_LABELS[dayIdx]} ${TIME_LABELS[colIdx]}：${value} 則`}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+
+          {/* Legend */}
+          <div className="mt-3 sm:mt-4 flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-2 pl-10 sm:pl-14">
+            <div className="flex items-center gap-2">
+              <span className="font-body text-[11px] sm:text-[12px] text-text-muted">少</span>
+              <div
+                className="h-3 w-24 sm:w-40 rounded-[6px]"
+                style={{
+                  background:
+                    "linear-gradient(to right, #E8457E08, #E8457E40, #E8457E80, #E8457ECC, #E8457E)",
+                }}
+              />
+              <span className="font-body text-[11px] sm:text-[12px] text-text-muted">多</span>
+            </div>
+            <span className="font-body text-[12px] sm:text-[13px] font-semibold text-rose-primary">
+              最活躍：{DAY_LABELS[peakDay]} {TIME_LABELS[peakCol]}
+            </span>
+          </div>
         </div>
-        <span className="font-body text-[13px] font-semibold text-rose-primary">
-          最活躍：{DAY_LABELS[peakDay]} {TIME_LABELS[peakCol]}
-        </span>
       </div>
     </div>
   );

@@ -235,28 +235,26 @@ export function ShareCTA({ result, reportRef, onRegister }: Props) {
 
       {/* ===== Visible CTA section ===== */}
       <section
-        className="flex w-full flex-col items-center"
+        className="flex w-full flex-col items-center px-4 py-10 sm:px-8 sm:py-12 md:px-16 lg:px-[120px] lg:py-16"
         style={{
           background: "linear-gradient(160deg, #FFF8FA 0%, #FDF0F5 50%, #EDE4F5 100%)",
-          padding: "64px 120px",
         }}
       >
-        <h2 className="mb-3 text-center font-heading text-[32px] font-bold text-text-primary">
+        <h2 className="mb-3 text-center font-heading text-[24px] sm:text-[28px] lg:text-[32px] font-bold text-text-primary">
           分享你們的心動報告
         </h2>
-        <p className="mb-8 text-center font-body text-[16px] text-text-secondary">
+        <p className="mb-6 sm:mb-8 text-center font-body text-[14px] sm:text-[16px] text-text-secondary">
           生成一張精美的報告摘要卡，與朋友分享你們的互動數據
         </p>
 
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 w-full sm:w-auto">
           <button
             type="button"
             onClick={handleDownloadCard}
             disabled={generating}
-            className="inline-flex items-center gap-2.5 rounded-full font-body text-[16px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+            className="inline-flex w-full sm:w-auto items-center justify-center gap-2.5 rounded-full font-body text-[14px] sm:text-[16px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60 px-6 py-3 sm:px-9 sm:py-4"
             style={{
               background: "linear-gradient(135deg, #E8457E 0%, #9F7AEA 100%)",
-              padding: "16px 36px",
               boxShadow: "0 6px 24px 0 #E8457E35",
             }}
           >
@@ -269,8 +267,7 @@ export function ShareCTA({ result, reportRef, onRegister }: Props) {
             type="button"
             onClick={handleDownloadReport}
             disabled={downloading}
-            className="inline-flex items-center gap-2.5 rounded-full border border-border-light bg-white font-body text-[16px] font-semibold text-text-primary transition-colors hover:bg-gray-50 disabled:opacity-60"
-            style={{ padding: "16px 36px" }}
+            className="inline-flex w-full sm:w-auto items-center justify-center gap-2.5 rounded-full border border-border-light bg-white font-body text-[14px] sm:text-[16px] font-semibold text-text-primary transition-colors hover:bg-gray-50 disabled:opacity-60 px-6 py-3 sm:px-9 sm:py-4"
           >
             {downloading
               ? <><Loader2 className="h-[18px] w-[18px] animate-spin" /> 下載中...</>

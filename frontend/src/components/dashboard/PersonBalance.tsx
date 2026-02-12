@@ -70,8 +70,8 @@ export function PersonBalance({ result }: Props) {
   ];
 
   return (
-    <section className="w-full bg-bg-blush" style={{ padding: "48px 80px" }}>
-      <h2 className="font-heading text-[24px] font-bold text-text-primary">
+    <section className="w-full bg-bg-blush px-4 py-8 sm:px-8 md:px-12 md:py-12 lg:px-20">
+      <h2 className="font-heading text-[20px] sm:text-[24px] font-bold text-text-primary">
         你們的互動比重
       </h2>
       <p className="mt-2 font-body text-[14px] text-text-secondary">
@@ -79,8 +79,7 @@ export function PersonBalance({ result }: Props) {
       </p>
 
       <div
-        className="mt-8 rounded-[20px] border border-border-light bg-white"
-        style={{ padding: "32px 40px" }}
+        className="mt-6 sm:mt-8 rounded-[16px] sm:rounded-[20px] border border-border-light bg-white p-4 sm:p-6 md:px-10 md:py-8"
       >
         {/* Legend */}
         <div className="mb-6 flex items-center justify-between">

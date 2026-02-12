@@ -30,14 +30,14 @@ export function FileDropzone({ onFileSelected, disabled }: Props) {
       onDragLeave={() => setIsDragging(false)}
       onDrop={handleDrop}
       className={`
-        flex flex-col items-center gap-4 rounded-3xl border-2 border-dashed p-12
+        flex flex-col items-center gap-3 sm:gap-4 rounded-2xl sm:rounded-3xl border-2 border-dashed p-6 sm:p-12
         transition-colors duration-200
         ${isDragging ? "border-rose-primary bg-rose-soft" : "border-border-light bg-white"}
         ${disabled ? "opacity-50 pointer-events-none" : ""}
       `}
     >
       <Upload className="h-10 w-10 text-rose-primary" />
-      <p className="font-heading text-lg font-bold text-text-primary">
+      <p className="font-heading text-base sm:text-lg font-bold text-text-primary text-center">
         拖放或點擊上傳 LINE 對話記錄
       </p>
       <p className="text-sm text-text-secondary">

@@ -12,27 +12,26 @@ export function LoveScoreHero({ result }: Props) {
 
   return (
     <section
-      className="flex w-full flex-col items-center"
+      className="flex w-full flex-col items-center px-4 py-10 sm:px-8 sm:py-14 lg:px-20 lg:py-[60px]"
       style={{
         background: "linear-gradient(150deg, #2D1B33 0%, #4A1942 33%, #6B2150 66%, #8B2A5E 100%)",
-        padding: "60px 80px",
       }}
     >
       {/* Label */}
       <span
-        className="font-body text-[16px] font-medium"
+        className="font-body text-[14px] sm:text-[16px] font-medium"
         style={{ color: "rgba(255, 255, 255, 0.7)" }}
       >
         你們的心動指數
       </span>
 
       {/* Score */}
-      <div className="mt-4 flex items-baseline gap-2">
-        <span className="font-heading text-[120px] font-extrabold leading-none text-white">
+      <div className="mt-3 sm:mt-4 flex items-baseline gap-2">
+        <span className="font-heading text-[64px] sm:text-[90px] lg:text-[120px] font-extrabold leading-none text-white">
           {score ?? "\u2014"}
         </span>
         <span
-          className="font-heading text-[32px] font-semibold"
+          className="font-heading text-[20px] sm:text-[26px] lg:text-[32px] font-semibold"
           style={{ color: "rgba(255, 255, 255, 0.5)" }}
         >
           / 100
@@ -63,7 +62,7 @@ export function LoveScoreHero({ result }: Props) {
 
       {/* AI Comment */}
       <p
-        className="mt-8 max-w-[700px] text-center font-body text-[16px] leading-[1.6]"
+        className="mt-6 sm:mt-8 max-w-[700px] text-center font-body text-[14px] sm:text-[16px] leading-[1.6] px-2"
         style={{ color: "rgba(255, 255, 255, 0.7)" }}
       >
         {comment ?? "AI 分析尚未完成，請稍候片刻，我們正在解讀你們的故事。"}

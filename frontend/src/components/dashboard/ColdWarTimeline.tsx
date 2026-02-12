@@ -15,12 +15,12 @@ export function ColdWarTimeline({ result }: Props) {
   const totalDays = result.basicStats.dateRange.totalDays;
 
   return (
-    <section className="w-full bg-bg-blush" style={{ padding: "48px 80px" }}>
-      <h2 className="mb-8 font-heading text-[24px] font-bold text-text-primary">
+    <section className="w-full bg-bg-blush px-4 py-8 sm:px-8 md:px-12 md:py-12 lg:px-20">
+      <h2 className="mb-6 sm:mb-8 font-heading text-[20px] sm:text-[24px] font-bold text-text-primary">
         冷戰偵測時間軸
       </h2>
 
-      <div className="rounded-[20px] border border-border-light bg-white p-7">
+      <div className="rounded-[16px] sm:rounded-[20px] border border-border-light bg-white p-4 sm:p-7">
         {/* Timeline bar */}
         <div
           className="mb-5 h-2 w-full overflow-hidden rounded-full"
@@ -36,7 +36,7 @@ export function ColdWarTimeline({ result }: Props) {
         </div>
 
         {/* Event cards */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {coldWars.map((event, idx) => {
             const style = EVENT_STYLES[idx % EVENT_STYLES.length];
             const TagIcon = style.icon;

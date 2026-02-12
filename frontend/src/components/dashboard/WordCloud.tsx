@@ -29,13 +29,13 @@ export function WordCloud({ result }: Props) {
   const labels = ["她的高頻詞", "他的高頻詞"];
 
   return (
-    <section className="w-full bg-bg-blush" style={{ padding: "48px 80px" }}>
-      <h2 className="mb-8 font-heading text-[24px] font-bold text-text-primary">
+    <section className="w-full bg-bg-blush px-4 py-8 sm:px-8 md:px-12 md:py-12 lg:px-20">
+      <h2 className="mb-6 sm:mb-8 font-heading text-[20px] sm:text-[24px] font-bold text-text-primary">
         文字雲 & 專屬用語
       </h2>
 
       {/* Word cloud cards */}
-      <div className="grid grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
         {persons.map((person, personIdx) => {
           const words = wordCloud[person] ?? [];
           const counts = words.map((w) => w.count);
@@ -62,7 +62,7 @@ export function WordCloud({ result }: Props) {
 
               {/* Word display area */}
               <div
-                className="flex h-[220px] flex-wrap items-center justify-center gap-x-3 gap-y-2 overflow-hidden rounded-[16px] p-4"
+                className="flex h-[160px] sm:h-[220px] flex-wrap items-center justify-center gap-x-2 sm:gap-x-3 gap-y-2 overflow-hidden rounded-[12px] sm:rounded-[16px] p-3 sm:p-4"
                 style={{ backgroundColor: personIdx === 0 ? "#FFF0F3" : "#EDE4F520" }}
               >
                 {words.map((w, wIdx) => (

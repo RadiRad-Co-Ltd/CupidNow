@@ -1,6 +1,10 @@
 # CupidNow Backend
 
-Python FastAPI 後端，負責解密、解析 LINE 聊天記錄，並執行所有分析管線。
+Python FastAPI 後端，負責解析 LINE 聊天記錄並執行所有分析管線。
+
+## 線上版本
+
+https://cupidnow-api.onrender.com
 
 ## 開發環境
 
@@ -37,8 +41,7 @@ app/
     ├── time_patterns.py      # 時間模式分析 (熱力圖 + 趨勢 + 晚安)
     ├── cold_war.py           # 冷戰偵測
     ├── text_analysis.py      # 文字分析 (jieba 中文斷詞)
-    ├── ai_analysis.py        # Claude AI 情緒分析
-    └── encryption.py         # AES-256-GCM 加解密
+    └── ai_analysis.py        # Claude AI 情緒分析
 
 tests/
 ├── conftest.py               # AsyncClient fixture
@@ -116,23 +119,57 @@ tests/
 
 需設定環境變數 `ANTHROPIC_API_KEY`。
 
-## 加密協定
+## 安全機制
 
-前後端使用 AES-256-GCM 加密：
-
-```
-加密格式: nonce(12 bytes) + ciphertext + tag(16 bytes)
-金鑰長度: 256 bits (32 bytes)
-金鑰傳輸: Base64 編碼
-```
-
-前端使用 WebCrypto API 加密，後端使用 PyCryptodome 解密。兩者的 nonce 長度均為 12 bytes。
+| 機制 | 說明 |
+|------|------|
+| 速率限制 | 每 IP 每 60 秒最多 10 次請求 |
+| 檔案大小限制 | 上傳檔案最大 10MB |
+| 記憶體清除 | 解析後立即清除原文與中間資料 |
+| 無持久化儲存 | 所有處理在記憶體中完成，不寫入磁碟 |
+| CORS 白名單 | 僅允許 `localhost:5173` 與 `CORS_ORIGIN` 指定的域名 |
 
 ## 環境變數
 
 | 變數 | 必要 | 說明 |
 |------|------|------|
 | `ANTHROPIC_API_KEY` | 否 | Claude API 金鑰，未設定則跳過 AI 分析 |
+| `CORS_ORIGIN` | 生產環境必要 | 允許的前端域名（例如 `https://cupidnow.netlify.app`） |
+
+## 部署
+
+### Render (Docker)
+
+使用 `Dockerfile` 部署至 Render：
+
+```dockerfile
+FROM python:3.12-slim
+WORKDIR /app
+COPY pyproject.toml .
+RUN pip install --no-cache-dir .
+RUN adduser --disabled-password --gecos '' appuser
+COPY app/ app/
+USER appuser
+EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+**Render 設定：**
+- Runtime: Docker
+- Root Directory: `backend`
+- Health Check Path: `/api/health`
+
+**環境變數（Render 控制台）：**
+- `ANTHROPIC_API_KEY` — Claude API 金鑰
+- `CORS_ORIGIN` — `https://cupidnow.netlify.app`
+
+### CI/CD
+
+推送至 `master` 分支後，Render 自動依 Dockerfile 建置並部署。
+
+**注意**：Render 免費方案在 15 分鐘無流量後會休眠，首次請求需等待冷啟動（約 30-60 秒）。
 
 ## 測試
 

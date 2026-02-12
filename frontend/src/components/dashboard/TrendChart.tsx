@@ -100,7 +100,7 @@ const TABS: { key: ViewMode; label: string }[] = [
   { key: "month", label: "月" },
 ];
 
-const BAR_WIDTH: Record<ViewMode, number> = { month: 32, week: 24, day: 20 };
+const BAR_WIDTH: Record<ViewMode, number> = { month: 20, week: 16, day: 14 };
 
 export function TrendChart({ result }: Props) {
   const [view, setView] = useState<ViewMode>("month");
@@ -130,13 +130,12 @@ export function TrendChart({ result }: Props) {
 
   return (
     <div
-      className="rounded-[20px] border border-border-light bg-white"
-      style={{ padding: "24px 32px" }}
+      className="rounded-[16px] sm:rounded-[20px] border border-border-light bg-white p-4 sm:p-6 md:px-8"
     >
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
         <div className="flex flex-col gap-1">
-          <h3 className="font-heading text-[18px] font-bold text-text-primary">
+          <h3 className="font-heading text-[16px] sm:text-[18px] font-bold text-text-primary">
             聊天頻率趨勢
           </h3>
           <p className="font-body text-[13px] text-text-secondary">
@@ -167,12 +166,12 @@ export function TrendChart({ result }: Props) {
 
       {/* Chart area — fixed dimensions */}
       <div
-        className="relative mt-5 flex items-end overflow-hidden rounded-xl"
-        style={{ height: 300, gap: 10, padding: "28px 16px 0 16px", backgroundColor: "#FEFAFC" }}
+        className="relative mt-4 sm:mt-5 flex items-end overflow-hidden rounded-xl"
+        style={{ height: 220, gap: 6, padding: "20px 8px 0 8px", backgroundColor: "#FEFAFC" }}
       >
         {groups.map((group, idx) => {
-          const herH = Math.max(Math.round((group.her / maxVal) * 220), 4);
-          const himH = Math.max(Math.round((group.him / maxVal) * 220), 4);
+          const herH = Math.max(Math.round((group.her / maxVal) * 160), 4);
+          const himH = Math.max(Math.round((group.him / maxVal) * 160), 4);
           const isPeak = idx === peakIdx;
 
           return (
@@ -237,8 +236,8 @@ export function TrendChart({ result }: Props) {
       </div>
 
       {/* AI Insight */}
-      <div className="mt-5 rounded-[14px]" style={{ padding: "16px 20px" }}>
-        <p className="font-body text-[13px] font-medium text-text-primary">
+      <div className="mt-4 sm:mt-5 rounded-[14px] px-3 py-3 sm:px-5 sm:py-4">
+        <p className="font-body text-[12px] sm:text-[13px] font-medium text-text-primary">
           AI 洞察｜{peakLabel}是你們的升溫期！訊息量是初期的 {ratio} 倍，她的秒回率也在這段時間達到最高的 72%
         </p>
       </div>

@@ -41,12 +41,12 @@ export function GoldenQuotes({ result }: Props) {
   const goldenQuotes = result.aiAnalysis?.goldenQuotes;
 
   return (
-    <section className="w-full bg-white" style={{ padding: "48px 80px" }}>
-      <h2 className="mb-8 font-heading text-[24px] font-bold text-text-primary">
+    <section className="w-full bg-white px-4 py-8 sm:px-8 md:px-12 md:py-12 lg:px-20">
+      <h2 className="mb-6 sm:mb-8 font-heading text-[20px] sm:text-[24px] font-bold text-text-primary">
         金句賞析
       </h2>
 
-      <div className="grid grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
         {CATEGORIES.map((cat) => {
           const quotes = goldenQuotes?.[cat.key];
           const quote = quotes?.[0];
