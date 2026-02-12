@@ -1,3 +1,4 @@
+import { MessageCircle, Type, Smile, Phone, type LucideIcon } from "lucide-react";
 import type { AnalysisResult } from "../../types/analysis";
 
 interface Props {
@@ -5,7 +6,10 @@ interface Props {
 }
 
 interface StatCard {
-  emoji: string;
+  icon: LucideIcon;
+  iconBg: string;
+  iconColor: string;
+  badge: string;
   value: number;
   label: string;
 }
@@ -13,36 +17,63 @@ interface StatCard {
 export function BasicStatsCards({ result }: Props) {
   const { messageCount, wordCount, typeBreakdown, callStats, dateRange } =
     result.basicStats;
+  const persons = result.persons;
 
-  const totalHours = Math.round((callStats.totalDurationSeconds / 3600) * 10) / 10;
+  const totalHours = Math.round(callStats.totalDurationSeconds / 3600);
+  const avgWordsPerMsg = messageCount.total
+    ? Math.round(wordCount.total / messageCount.total)
+    : 0;
+  const maxCallH = Math.floor(callStats.maxDurationSeconds / 3600);
+  const maxCallM = Math.round((callStats.maxDurationSeconds % 3600) / 60);
+
+  const herPct = messageCount.total
+    ? Math.round(((messageCount[persons[0]] ?? 0) / messageCount.total) * 100)
+    : 50;
+  const himPct = 100 - herPct;
+
+  const herStickers = (result.basicStats.personBalance[persons[0]]?.sticker?.count ?? 0);
+  const himStickers = (result.basicStats.personBalance[persons[1]]?.sticker?.count ?? 0);
+  const stickerWinner = herStickers >= himStickers ? "她" : "他";
 
   const cards: StatCard[] = [
     {
-      emoji: "\uD83D\uDCAC",
+      icon: MessageCircle,
+      iconBg: "bg-rose-soft",
+      iconColor: "text-rose-primary",
+      badge: `她 ${herPct}% · 他 ${himPct}%`,
       value: messageCount.total ?? 0,
       label: "總訊息數",
     },
     {
-      emoji: "\u270D\uFE0F",
+      icon: Type,
+      iconBg: "bg-purple-soft",
+      iconColor: "text-purple-accent",
+      badge: `平均每則 ${avgWordsPerMsg} 字`,
       value: wordCount.total ?? 0,
       label: "總字數",
     },
     {
-      emoji: "\uD83C\uDFA8",
+      icon: Smile,
+      iconBg: "bg-[#F5A62318]",
+      iconColor: "text-gold-accent",
+      badge: `${stickerWinner}超愛貼圖！`,
       value: (typeBreakdown.sticker ?? 0) + (typeBreakdown.photo ?? 0),
       label: "貼圖 & 圖片",
     },
     {
-      emoji: "\uD83D\uDCDE",
+      icon: Phone,
+      iconBg: "bg-[#38B2AC18]",
+      iconColor: "text-teal-positive",
+      badge: `最長 ${maxCallH}h ${maxCallM}m`,
       value: callStats.totalCalls,
-      label: `通話次數 \u00B7 總計 ${totalHours} 小時`,
+      label: `通話次數 · 總計 ${totalHours} 小時`,
     },
   ];
 
   return (
     <section className="w-full bg-white" style={{ padding: "48px 80px" }}>
       {/* Header */}
-      <div className="mb-6 flex items-baseline gap-4">
+      <div className="mb-8 flex items-center justify-between">
         <h2 className="font-heading text-[24px] font-bold text-text-primary">
           基礎統計
         </h2>
@@ -56,18 +87,25 @@ export function BasicStatsCards({ result }: Props) {
         {cards.map((card) => (
           <div
             key={card.label}
-            className="rounded-[20px] border border-border-light bg-white p-6"
+            className="flex flex-col gap-3 rounded-[20px] border border-border-light bg-white p-6"
           >
-            {/* Icon row */}
-            <div className="mb-3 text-[28px]">{card.emoji}</div>
+            {/* Icon row with badge */}
+            <div className="flex items-center justify-between">
+              <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${card.iconBg}`}>
+                <card.icon className={`h-5 w-5 ${card.iconColor}`} />
+              </div>
+              <span className="font-body text-[12px] font-medium text-text-secondary">
+                {card.badge}
+              </span>
+            </div>
 
             {/* Value */}
-            <div className="font-heading text-[36px] font-extrabold text-text-primary">
+            <div className="font-heading text-[36px] font-extrabold leading-none text-text-primary">
               {card.value.toLocaleString()}
             </div>
 
             {/* Label */}
-            <div className="mt-1 font-body text-[14px] font-medium text-text-secondary">
+            <div className="font-body text-[14px] font-medium text-text-secondary">
               {card.label}
             </div>
           </div>

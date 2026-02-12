@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { Upload, Heart } from "lucide-react";
 
 interface Props {
   onFileSelected: (file: File) => void;
@@ -35,14 +36,15 @@ export function FileDropzone({ onFileSelected, disabled }: Props) {
         ${disabled ? "opacity-50 pointer-events-none" : ""}
       `}
     >
-      <div className="text-4xl">💌</div>
+      <Upload className="h-10 w-10 text-rose-primary" />
       <p className="font-heading text-lg font-bold text-text-primary">
         拖放或點擊上傳 LINE 對話記錄
       </p>
       <p className="text-sm text-text-secondary">
         支援 .txt 格式的 LINE 聊天記錄匯出檔
       </p>
-      <label className="cursor-pointer rounded-xl bg-gradient-to-r from-rose-primary to-purple-accent px-8 py-3 font-body text-base font-semibold text-white shadow-lg transition hover:opacity-90">
+      <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-gradient-to-r from-rose-primary to-purple-accent px-8 py-3 font-body text-base font-semibold text-white shadow-lg transition hover:opacity-90">
+        <Heart className="h-4 w-4" />
         選擇檔案
         <input
           type="file"

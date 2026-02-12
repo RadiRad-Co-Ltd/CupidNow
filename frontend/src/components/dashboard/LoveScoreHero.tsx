@@ -1,3 +1,4 @@
+import { Flame, Sparkles } from "lucide-react";
 import type { AnalysisResult } from "../../types/analysis";
 
 interface Props {
@@ -46,9 +47,7 @@ export function LoveScoreHero({ result }: Props) {
           padding: "10px 24px",
         }}
       >
-        <span className="text-[16px]" role="img" aria-label="flame">
-          🔥
-        </span>
+        <Flame className="h-5 w-5" style={{ color: "#FF9EBF" }} />
         <span className="font-body text-[14px] font-semibold text-white">
           {!ai
             ? "等待 AI 分析中..."
@@ -72,9 +71,7 @@ export function LoveScoreHero({ result }: Props) {
 
       {/* AI Insight tag */}
       <div className="mt-8 flex items-center gap-1">
-        <span className="text-[12px]" role="img" aria-label="sparkles">
-          ✨
-        </span>
+        <Sparkles className="h-3 w-3" style={{ color: "#9F7AEA" }} />
         <span className="font-body text-[12px] font-medium text-purple-accent">
           AI 洞察分析
         </span>

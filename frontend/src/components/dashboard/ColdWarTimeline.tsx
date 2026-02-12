@@ -1,61 +1,88 @@
+import { AlertTriangle, TrendingDown, TrendingUp } from "lucide-react";
 import type { AnalysisResult } from "../../types/analysis";
 
 interface Props {
   result: AnalysisResult;
 }
 
-const EVENT_COLORS = [
-  "bg-rose-soft",
-  "bg-gold-accent/15",
-  "bg-teal-positive/10",
+const EVENT_STYLES = [
+  { bg: "bg-[#E8457E10]", tagBg: "#E8457E20", tagColor: "#E8457E", tagLabel: "冷戰期", icon: AlertTriangle },
+  { bg: "bg-[#F5A62310]", tagBg: "#F5A62320", tagColor: "#F5A623", tagLabel: "低潮期", icon: TrendingDown },
 ] as const;
 
 export function ColdWarTimeline({ result }: Props) {
   const { coldWars } = result;
+  const totalDays = result.basicStats.dateRange.totalDays;
 
   return (
     <section className="w-full bg-bg-blush" style={{ padding: "48px 80px" }}>
-      <h2 className="mb-6 font-heading text-[24px] font-bold text-text-primary">
+      <h2 className="mb-8 font-heading text-[24px] font-bold text-text-primary">
         冷戰偵測時間軸
       </h2>
 
       <div className="rounded-[20px] border border-border-light bg-white p-7">
         {/* Timeline bar */}
         <div
-          className="mb-6 h-2 w-full rounded-full"
-          style={{
-            background:
-              "linear-gradient(90deg, #E8457E 0%, #9F7AEA 50%, #38B2AC 100%)",
-          }}
-        />
+          className="mb-5 h-2 w-full overflow-hidden rounded-full"
+          style={{ backgroundColor: "#E8457E15" }}
+        >
+          <div
+            className="h-full rounded-full"
+            style={{
+              background:
+                "linear-gradient(90deg, #38B2AC60 0%, #38B2AC 15%, #E8457E 35%, #9F7AEA30 40%, #38B2AC 55%, #38B2AC 70%, #F5A62380 78%, #38B2AC 90%, #38B2AC60 100%)",
+            }}
+          />
+        </div>
 
-        {coldWars.length > 0 ? (
-          <div className="flex flex-wrap gap-4">
-            {coldWars.map((event, idx) => (
+        {/* Event cards */}
+        <div className="grid grid-cols-3 gap-4">
+          {coldWars.map((event, idx) => {
+            const style = EVENT_STYLES[idx % EVENT_STYLES.length];
+            const TagIcon = style.icon;
+            const desc = event.messageDrop >= 70
+              ? `訊息量下降 ${event.messageDrop}%，回覆時間拉長至 4 小時`
+              : `訊息量下降 ${event.messageDrop}%，但很快就恢復了`;
+            return (
               <div
                 key={`${event.startDate}-${event.endDate}`}
-                className={`flex flex-col gap-2 rounded-[14px] p-4 ${EVENT_COLORS[idx % EVENT_COLORS.length]}`}
+                className={`flex flex-col gap-2 rounded-[14px] p-4 ${style.bg}`}
               >
-                <span className="font-heading text-[14px] font-bold text-text-primary">
+                <div className="flex items-center gap-1.5">
+                  <TagIcon className="h-3.5 w-3.5" style={{ color: style.tagColor }} />
+                  <span
+                    className="font-body text-[12px] font-semibold"
+                    style={{ color: style.tagColor }}
+                  >
+                    {style.tagLabel}
+                  </span>
+                </div>
+                <span className="font-body text-[13px] font-semibold text-text-primary">
                   {event.startDate} — {event.endDate}
                 </span>
-                <span className="font-body text-[13px] text-text-secondary">
-                  訊息量下降 {event.messageDrop}%
+                <span className="font-body text-[12px] text-text-secondary">
+                  {desc}
                 </span>
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center gap-3 py-10">
-            <span className="text-[40px]">{"\u2705"}</span>
-            <span className="font-heading text-[16px] font-semibold text-teal-positive">
-              沒有偵測到冷戰期
+            );
+          })}
+
+          {/* Always show a positive summary card */}
+          <div className="flex flex-col gap-2 rounded-[14px] bg-[#38B2AC10] p-4">
+            <div className="flex items-center gap-1.5">
+              <TrendingUp className="h-3.5 w-3.5 text-teal-positive" />
+              <span className="font-body text-[12px] font-semibold text-teal-positive">
+                持續升溫中
+              </span>
+            </div>
+            <span className="font-body text-[13px] font-semibold text-text-primary">
+              持續升溫中
             </span>
-            <span className="font-body text-[13px] text-text-secondary">
-              你們的感情穩定又甜蜜！
+            <span className="font-body text-[12px] text-text-secondary">
+              {totalDays} 天中僅 {coldWars.length} 次低潮期，感情狀態非常穩定
             </span>
           </div>
-        )}
+        </div>
       </div>
     </section>
   );

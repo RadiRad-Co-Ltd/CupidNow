@@ -1,3 +1,4 @@
+import { Moon, AlarmClock, Sun, Timer, type LucideIcon } from "lucide-react";
 import type { AnalysisResult } from "../../types/analysis";
 
 interface Props {
@@ -5,7 +6,8 @@ interface Props {
 }
 
 interface NightCard {
-  emoji: string;
+  icon: LucideIcon;
+  iconColor: string;
   value: string;
   label: string;
 }
@@ -19,48 +21,56 @@ function formatHoursToTime(floatHours: number): string {
   return `${displayHours}:${String(minutes).padStart(2, "0")} ${ampm}`;
 }
 
-function getTopPerson(record: Record<string, number>): string {
-  let topPerson = "";
-  let topCount = -1;
-  for (const [person, count] of Object.entries(record)) {
-    if (count > topCount) {
-      topCount = count;
-      topPerson = person;
-    }
-  }
-  return topPerson || "—";
+function getTopPersonWithPercent(record: Record<string, number>): string {
+  const entries = Object.entries(record);
+  if (entries.length === 0) return "—";
+  const total = entries.reduce((sum, [, v]) => sum + v, 0);
+  if (total === 0) return "—";
+  const sorted = entries.sort((a, b) => b[1] - a[1]);
+  const [topPerson, topCount] = sorted[0];
+  const pct = Math.round((topCount / total) * 100);
+  const label = topPerson === entries[0][0] ? "她" : "他";
+  return `${label}先說 ${pct}%`;
 }
 
 export function GoodnightAnalysis({ result }: Props) {
   const { goodnightAnalysis } = result.timePatterns;
-  const { totalDays } = result.basicStats.dateRange;
+  // Estimate avg bedtime chat length (rough: time from 11pm to last chat)
+  const chatMinutes = Math.max(
+    Math.round((goodnightAnalysis.avgLastChatTime + 24 - 23) * 60 % (24 * 60)),
+    15
+  );
 
   const cards: NightCard[] = [
     {
-      emoji: "\uD83C\uDF19",
-      value: getTopPerson(goodnightAnalysis.whoSaysGoodnightFirst),
+      icon: Moon,
+      iconColor: "#F5A623",
+      value: getTopPersonWithPercent(goodnightAnalysis.whoSaysGoodnightFirst),
       label: "誰先說晚安",
     },
     {
-      emoji: "\u23F0",
+      icon: AlarmClock,
+      iconColor: "#9F7AEA",
       value: formatHoursToTime(goodnightAnalysis.avgLastChatTime),
       label: "平均最晚聊到",
     },
     {
-      emoji: "\u2600\uFE0F",
-      value: getTopPerson(goodnightAnalysis.whoSaysGoodmorningFirst),
+      icon: Sun,
+      iconColor: "#F472B6",
+      value: getTopPersonWithPercent(goodnightAnalysis.whoSaysGoodmorningFirst),
       label: "誰先說早安",
     },
     {
-      emoji: "\u23F1\uFE0F",
-      value: String(totalDays),
-      label: "聊天天數",
+      icon: Timer,
+      iconColor: "#38B2AC",
+      value: `${chatMinutes} 分鐘`,
+      label: "平均睡前聊天時長",
     },
   ];
 
   return (
     <section className="w-full bg-white" style={{ padding: "48px 80px" }}>
-      <h2 className="mb-6 font-heading text-[24px] font-bold text-text-primary">
+      <h2 className="mb-8 font-heading text-[24px] font-bold text-text-primary">
         晚安分析
       </h2>
 
@@ -68,17 +78,17 @@ export function GoodnightAnalysis({ result }: Props) {
         {cards.map((card) => (
           <div
             key={card.label}
-            className="flex flex-col items-center gap-4 rounded-[20px] p-7"
+            className="flex flex-col items-center justify-center gap-4 rounded-[20px] p-7"
             style={{
               background:
                 "linear-gradient(150deg, #1A1035 0%, #2D1B4E 100%)",
             }}
           >
-            <span className="text-[32px]">{card.emoji}</span>
-            <span className="font-heading text-[22px] font-extrabold text-white">
+            <card.icon className="h-7 w-7" style={{ color: card.iconColor }} />
+            <span className="font-heading text-[22px] font-extrabold text-white text-center">
               {card.value}
             </span>
-            <span className="font-body text-[13px] font-medium text-white/70">
+            <span className="font-body text-[13px] font-medium text-white/70 text-center">
               {card.label}
             </span>
           </div>

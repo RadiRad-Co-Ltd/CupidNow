@@ -1,3 +1,6 @@
+import { useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { Heart, Share2, Plus } from "lucide-react";
 import type { AnalysisResult } from "../types/analysis";
 import { LoveScoreHero } from "../components/dashboard/LoveScoreHero";
 import { BasicStatsCards } from "../components/dashboard/BasicStatsCards";
@@ -17,20 +20,50 @@ interface Props {
 }
 
 export function DashboardPage({ result }: Props) {
+  const navigate = useNavigate();
+  const reportRef = useRef<HTMLElement>(null);
+  const shareCardFnRef = useRef<(() => Promise<void>) | null>(null);
+
+  const handleHeaderShare = useCallback(() => {
+    shareCardFnRef.current?.();
+  }, []);
+
+  const registerShareFn = useCallback((fn: () => Promise<void>) => {
+    shareCardFnRef.current = fn;
+  }, []);
+
   return (
     <div className="min-h-screen bg-bg-page">
       {/* Dashboard Header */}
-      <header className="flex items-center justify-between bg-white px-20 py-5 border-b border-border-light">
-        <span className="font-heading text-2xl font-extrabold text-text-primary">
-          💕 CupidNow
-        </span>
-        <span className="font-body text-[14px] text-text-secondary">
-          分析報告
-        </span>
+      <header className="flex items-center justify-between bg-white px-20 py-[18px] border-b border-border-light">
+        <div className="flex items-center gap-2">
+          <Heart className="h-6 w-6 text-rose-primary" />
+          <span className="font-heading text-xl font-extrabold text-text-primary">
+            CupidNow
+          </span>
+        </div>
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={handleHeaderShare}
+            className="inline-flex items-center gap-2 rounded-full bg-rose-soft px-5 py-2.5 text-[13px] font-semibold text-rose-primary"
+          >
+            <Share2 className="h-4 w-4" />
+            分享報告
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate("/")}
+            className="inline-flex items-center gap-2 rounded-full bg-rose-primary px-5 py-2.5 text-[13px] font-semibold text-white"
+          >
+            <Plus className="h-4 w-4" />
+            新分析
+          </button>
+        </div>
       </header>
 
-      {/* Main content sections */}
-      <main>
+      {/* Main content — captured for report download */}
+      <main ref={reportRef}>
         <LoveScoreHero result={result} />
         <BasicStatsCards result={result} />
         <PersonBalance result={result} />
@@ -39,12 +72,12 @@ export function DashboardPage({ result }: Props) {
         {/* Time Patterns */}
         <section className="w-full bg-bg-blush" style={{ padding: "48px 80px" }}>
           <h2 className="font-heading text-[24px] font-bold text-text-primary">
-            時間模式
+            時間分析
           </h2>
           <p className="mt-2 font-body text-[14px] text-text-secondary">
-            什麼時候聊得最多？訊息量如何變化？
+            看見你們的聊天節奏：什麼時候最活躍？訊息量如何隨時間變化？
           </p>
-          <div className="mt-6 grid grid-cols-2 gap-5">
+          <div className="mt-8 flex flex-col gap-5">
             <TimeHeatmap result={result} />
             <TrendChart result={result} />
           </div>
@@ -55,20 +88,24 @@ export function DashboardPage({ result }: Props) {
         <SentimentAnalysis result={result} />
         <WordCloud result={result} />
         <GoldenQuotes result={result} />
-        <ShareCTA />
       </main>
 
+      <ShareCTA result={result} reportRef={reportRef} onRegister={registerShareFn} />
+
       {/* Dashboard Footer */}
-      <footer className="flex flex-col items-center gap-2 border-t border-border-light bg-white px-20 py-8">
-        <span className="font-heading text-lg font-bold text-text-primary">
-          💕 CupidNow
+      <footer
+        className="flex items-center justify-between px-20 py-6"
+        style={{ backgroundColor: "#2D1B33" }}
+      >
+        <div className="flex items-center gap-2">
+          <Heart className="h-[18px] w-[18px] text-rose-primary" />
+          <span className="font-heading text-[16px] font-bold text-white">
+            CupidNow
+          </span>
+        </div>
+        <span className="font-body text-[12px] text-white/50">
+          Powered by Claude AI · AES-256 加密 · 分析完即刪除
         </span>
-        <p className="font-body text-[13px] text-text-muted">
-          你的資料在分析完成後已安全刪除，我們不會儲存任何聊天內容。
-        </p>
-        <p className="font-body text-[12px] text-text-muted">
-          &copy; {new Date().getFullYear()} CupidNow. All rights reserved.
-        </p>
       </footer>
     </div>
   );

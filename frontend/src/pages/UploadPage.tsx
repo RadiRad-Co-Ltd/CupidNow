@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Sparkles, ShieldCheck, Trash2, EyeOff, UserX } from "lucide-react";
 import { FileDropzone } from "../components/FileDropzone";
 import type { AnalysisResult } from "../types/analysis";
 
@@ -14,6 +15,13 @@ const LOADING_TEXTS = [
   "計算心動的瞬間...",
   "分析互動指數...",
   "尋找最甜蜜的對話...",
+];
+
+const PRIVACY_BADGES = [
+  { icon: ShieldCheck, label: "HTTPS 加密傳輸", color: "text-teal-positive" },
+  { icon: Trash2, label: "分析完即銷毀", color: "text-rose-primary" },
+  { icon: EyeOff, label: "純記憶體處理", color: "text-purple-accent" },
+  { icon: UserX, label: "無需註冊帳號", color: "text-gold-accent" },
 ];
 
 export function UploadPage({ onResult }: Props) {
@@ -64,13 +72,14 @@ export function UploadPage({ onResult }: Props) {
   return (
     <div className="min-h-screen bg-bg-page">
       <header className="flex items-center justify-between px-20 py-5">
-        <span className="font-heading text-2xl font-extrabold text-text-primary">
-          💕 CupidNow
-        </span>
+        <div className="flex items-center gap-2">
+          <img src="/logo.png" alt="CupidNow" className="h-10" />
+        </div>
       </header>
 
       <main className="mx-auto flex max-w-2xl flex-col items-center gap-8 px-4 pt-16">
-        <span className="rounded-full bg-rose-soft px-4 py-1 text-sm font-semibold text-rose-primary">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-soft px-4 py-1 text-sm font-semibold text-rose-primary">
+          <Sparkles className="h-4 w-4" />
           Powered by AI Analysis
         </span>
         <h1 className="text-center font-heading text-5xl font-extrabold leading-tight text-text-primary">
@@ -101,9 +110,10 @@ export function UploadPage({ onResult }: Props) {
         )}
 
         <div className="flex flex-wrap justify-center gap-4 pt-8">
-          {["🔒 HTTPS 加密傳輸", "🗑️ 分析完即銷毀", "💾 純記憶體處理", "👤 無需註冊帳號"].map((t) => (
-            <span key={t} className="rounded-full border border-border-light bg-white px-4 py-2 text-sm font-semibold text-text-primary">
-              {t}
+          {PRIVACY_BADGES.map((badge) => (
+            <span key={badge.label} className="inline-flex items-center gap-2 rounded-full border border-border-light bg-white px-4 py-2 text-sm font-semibold text-text-primary">
+              <badge.icon className={`h-4 w-4 ${badge.color}`} />
+              {badge.label}
             </span>
           ))}
         </div>

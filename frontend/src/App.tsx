@@ -3,9 +3,11 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { UploadPage } from "./pages/UploadPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import type { AnalysisResult } from "./types/analysis";
+// DEV ONLY: mock data for dashboard preview — remove before production
+import { mockResult } from "./data/mockResult";
 
 export default function App() {
-  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [result, setResult] = useState<AnalysisResult | null>(mockResult);
 
   return (
     <BrowserRouter>

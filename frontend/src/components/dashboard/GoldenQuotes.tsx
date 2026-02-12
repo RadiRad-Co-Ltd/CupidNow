@@ -1,3 +1,4 @@
+import { Heart, Smile, Zap, type LucideIcon } from "lucide-react";
 import type { AnalysisResult } from "../../types/analysis";
 
 interface Props {
@@ -6,7 +7,7 @@ interface Props {
 
 interface QuoteCategory {
   key: "sweetest" | "funniest" | "mostTouching";
-  emoji: string;
+  icon: LucideIcon;
   label: string;
   bgClass: string;
   textColor: string;
@@ -15,22 +16,22 @@ interface QuoteCategory {
 const CATEGORIES: QuoteCategory[] = [
   {
     key: "sweetest",
-    emoji: "\uD83D\uDC95",
+    icon: Heart,
     label: "最甜蜜",
     bgClass: "bg-rose-soft",
     textColor: "text-rose-primary",
   },
   {
     key: "funniest",
-    emoji: "\uD83D\uDE02",
-    label: "最搞笑",
-    bgClass: "bg-gold-accent/15",
+    icon: Smile,
+    label: "最好笑",
+    bgClass: "bg-[#F5A62315]",
     textColor: "text-gold-accent",
   },
   {
     key: "mostTouching",
-    emoji: "\uD83D\uDC9C",
-    label: "最感動",
+    icon: Zap,
+    label: "最心動",
     bgClass: "bg-purple-soft",
     textColor: "text-purple-accent",
   },
@@ -41,7 +42,7 @@ export function GoldenQuotes({ result }: Props) {
 
   return (
     <section className="w-full bg-white" style={{ padding: "48px 80px" }}>
-      <h2 className="mb-6 font-heading text-[24px] font-bold text-text-primary">
+      <h2 className="mb-8 font-heading text-[24px] font-bold text-text-primary">
         金句賞析
       </h2>
 
@@ -57,9 +58,9 @@ export function GoldenQuotes({ result }: Props) {
             >
               {/* Tag pill */}
               <span
-                className={`inline-flex w-fit items-center gap-1 rounded-full px-3 py-1 font-body text-[13px] font-semibold ${cat.bgClass} ${cat.textColor}`}
+                className={`inline-flex w-fit items-center gap-1.5 rounded-full px-3.5 py-1.5 font-body text-[12px] font-semibold ${cat.bgClass} ${cat.textColor}`}
               >
-                {cat.emoji} {cat.label}
+                <cat.icon className="h-3 w-3" /> {cat.label}
               </span>
 
               {/* Quote text */}
@@ -72,7 +73,7 @@ export function GoldenQuotes({ result }: Props) {
               {/* Attribution */}
               {quote && (
                 <span className="font-body text-[13px] text-text-muted">
-                  — {quote.sender}，{quote.date}
+                  — {quote.sender === result.persons[0] ? "她" : "他"}，{quote.date}
                 </span>
               )}
             </div>

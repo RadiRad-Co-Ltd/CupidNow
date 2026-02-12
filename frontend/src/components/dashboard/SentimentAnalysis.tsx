@@ -1,3 +1,4 @@
+import { Sparkles } from "lucide-react";
 import type { AnalysisResult } from "../../types/analysis";
 
 interface Props {
@@ -24,7 +25,7 @@ export function SentimentAnalysis({ result }: Props) {
 
   return (
     <section className="w-full bg-white" style={{ padding: "48px 80px" }}>
-      <h2 className="mb-6 font-heading text-[24px] font-bold text-text-primary">
+      <h2 className="mb-8 font-heading text-[24px] font-bold text-text-primary">
         AI 情緒分析
       </h2>
 
@@ -63,19 +64,28 @@ export function SentimentAnalysis({ result }: Props) {
 
         {/* Right: AI Insight card */}
         <div
-          className="flex w-[360px] shrink-0 flex-col gap-4 rounded-[20px] p-7"
+          className="flex w-[360px] shrink-0 flex-col gap-5 rounded-[20px] p-7"
           style={{
             background:
               "linear-gradient(160deg, #E8457E 0%, #9F7AEA 100%)",
             boxShadow: "0 8px 32px 0 #E8457E30",
           }}
         >
-          <h3 className="font-heading text-[16px] font-semibold text-white">
-            {"\u2728"} AI 深度洞察
-          </h3>
-          <p className="font-body text-[14px] leading-relaxed text-white/90">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-6 w-6 text-white" />
+            <h3 className="font-heading text-[18px] font-bold text-white">
+              AI 情緒洞察
+            </h3>
+          </div>
+          <p className="font-body text-[14px] leading-[1.7] text-white/[.87]">
             {insight || "等待 AI 分析..."}
           </p>
+          <div className="flex items-center gap-1.5 rounded-full bg-white/20 px-3.5 py-1.5 w-fit">
+            <Sparkles className="h-3 w-3 text-white/70" />
+            <span className="font-body text-[12px] font-medium text-white/70">
+              Claude AI 深度分析
+            </span>
+          </div>
         </div>
       </div>
     </section>

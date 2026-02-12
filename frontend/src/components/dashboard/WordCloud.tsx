@@ -1,3 +1,4 @@
+import { Heart } from "lucide-react";
 import type { AnalysisResult } from "../../types/analysis";
 
 interface Props {
@@ -5,36 +6,31 @@ interface Props {
 }
 
 const PERSON_COLORS = [
-  // person1: rose tones
   ["#E8457E", "#C4225D", "#F06292", "#E8457ECC", "#AD1457"],
-  // person2: purple tones
   ["#9F7AEA", "#7C3AED", "#B794F4", "#9F7AEACC", "#6B21A8"],
 ];
 
-const PILL_BG_CLASSES = [
-  "bg-rose-soft",
-  "bg-purple-soft",
-  "bg-gold-accent/15",
+const PILL_STYLES = [
+  { bg: "bg-rose-soft", textColor: "text-rose-primary", iconColor: "text-rose-primary" },
+  { bg: "bg-purple-soft", textColor: "text-purple-accent", iconColor: "text-purple-accent" },
+  { bg: "bg-[#F5A62315]", textColor: "text-gold-accent", iconColor: "text-gold-accent" },
 ] as const;
 
-function computeFontSize(
-  count: number,
-  maxCount: number,
-  minCount: number,
-): number {
+function computeFontSize(count: number, maxCount: number, minCount: number): number {
   if (maxCount === minCount) return 18;
   const ratio = (count - minCount) / (maxCount - minCount);
-  return Math.round(13 + ratio * 19); // 13px to 32px
+  return Math.round(13 + ratio * 19);
 }
 
 export function WordCloud({ result }: Props) {
   const { persons } = result;
   const { wordCloud, uniquePhrases } = result.textAnalysis;
   const topPhrases = uniquePhrases.slice(0, 5);
+  const labels = ["她的高頻詞", "他的高頻詞"];
 
   return (
     <section className="w-full bg-bg-blush" style={{ padding: "48px 80px" }}>
-      <h2 className="mb-6 font-heading text-[24px] font-bold text-text-primary">
+      <h2 className="mb-8 font-heading text-[24px] font-bold text-text-primary">
         文字雲 & 專屬用語
       </h2>
 
@@ -53,21 +49,21 @@ export function WordCloud({ result }: Props) {
               key={person}
               className="rounded-[20px] border border-border-light bg-white p-7"
             >
-              {/* Person name with dot */}
+              {/* Person label with dot */}
               <div className="mb-4 flex items-center gap-2">
                 <span
-                  className="inline-block h-3 w-3 rounded-full"
+                  className="inline-block h-2.5 w-2.5 rounded-full"
                   style={{ backgroundColor: dotColor }}
                 />
-                <span className="font-heading text-[16px] font-semibold text-text-primary">
-                  {person}
+                <span className="font-heading text-[16px] font-bold text-text-primary">
+                  {labels[personIdx] ?? person}
                 </span>
               </div>
 
               {/* Word display area */}
               <div
                 className="flex h-[220px] flex-wrap items-center justify-center gap-x-3 gap-y-2 overflow-hidden rounded-[16px] p-4"
-                style={{ backgroundColor: personIdx === 0 ? "#FFF0F3" : "#F5F0FF" }}
+                style={{ backgroundColor: personIdx === 0 ? "#FFF0F3" : "#EDE4F520" }}
               >
                 {words.map((w, wIdx) => (
                   <span
@@ -81,11 +77,6 @@ export function WordCloud({ result }: Props) {
                     {w.word}
                   </span>
                 ))}
-                {words.length === 0 && (
-                  <span className="font-body text-[14px] text-text-muted">
-                    尚無資料
-                  </span>
-                )}
               </div>
             </div>
           );
@@ -94,18 +85,19 @@ export function WordCloud({ result }: Props) {
 
       {/* Unique phrases pills */}
       {topPhrases.length > 0 && (
-        <div className="mt-6 flex flex-wrap items-center gap-3">
-          <span className="font-heading text-[15px] font-semibold text-text-primary">
-            專屬用語
-          </span>
-          {topPhrases.map((item, idx) => (
-            <span
-              key={item.phrase}
-              className={`inline-flex items-center gap-1 rounded-full px-4 py-2 font-body text-[13px] font-medium text-text-primary ${PILL_BG_CLASSES[idx % PILL_BG_CLASSES.length]}`}
-            >
-              {"\u2764\uFE0F"} 「{item.phrase}」&times; {item.count} 次
-            </span>
-          ))}
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+          {topPhrases.map((item, idx) => {
+            const style = PILL_STYLES[idx % PILL_STYLES.length];
+            return (
+              <span
+                key={item.phrase}
+                className={`inline-flex items-center gap-2 rounded-full px-5 py-2.5 font-body text-[13px] font-semibold ${style.bg} ${style.textColor}`}
+              >
+                <Heart className={`h-3.5 w-3.5 ${style.iconColor}`} />
+                「{item.phrase}」 &times; {item.count} 次
+              </span>
+            );
+          })}
         </div>
       )}
     </section>
