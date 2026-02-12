@@ -1,0 +1,25 @@
+[project]
+name = "cupidnow-backend"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "python-multipart>=0.0.18",
+    "pycryptodome>=3.21",
+    "pandas>=2.2",
+    "jieba>=0.42",
+    "anthropic>=0.43",
+    "sse-starlette>=2.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.25",
+    "httpx>=0.28",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

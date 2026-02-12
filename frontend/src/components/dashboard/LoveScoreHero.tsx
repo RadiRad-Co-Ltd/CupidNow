@@ -1,0 +1,78 @@
+import type { AnalysisResult } from "../../types/analysis";
+
+interface Props {
+  result: AnalysisResult;
+}
+
+export function LoveScoreHero({ result }: Props) {
+  const ai = result.aiAnalysis;
+  const score = ai?.loveScore.score;
+  const comment = ai?.loveScore.comment;
+
+  return (
+    <section
+      className="flex w-full flex-col items-center"
+      style={{
+        background: "linear-gradient(150deg, #2D1B33 0%, #4A1942 33%, #6B2150 66%, #8B2A5E 100%)",
+        padding: "60px 80px",
+      }}
+    >
+      {/* Label */}
+      <span
+        className="font-body text-[16px] font-medium"
+        style={{ color: "rgba(255, 255, 255, 0.7)" }}
+      >
+        你們的心動指數
+      </span>
+
+      {/* Score */}
+      <div className="mt-4 flex items-baseline gap-2">
+        <span className="font-heading text-[120px] font-extrabold leading-none text-white">
+          {score ?? "\u2014"}
+        </span>
+        <span
+          className="font-heading text-[32px] font-semibold"
+          style={{ color: "rgba(255, 255, 255, 0.5)" }}
+        >
+          / 100
+        </span>
+      </div>
+
+      {/* Badge */}
+      <div
+        className="mt-6 flex items-center gap-2 rounded-full"
+        style={{
+          background: "#E8457E40",
+          padding: "10px 24px",
+        }}
+      >
+        <span className="text-[16px]" role="img" aria-label="flame">
+          🔥
+        </span>
+        <span className="font-body text-[14px] font-semibold text-white">
+          {ai
+            ? "超來電！互動熱度超過 92% 的人"
+            : "等待 AI 分析中..."}
+        </span>
+      </div>
+
+      {/* AI Comment */}
+      <p
+        className="mt-8 max-w-[700px] text-center font-body text-[16px] leading-[1.6]"
+        style={{ color: "rgba(255, 255, 255, 0.7)" }}
+      >
+        {comment ?? "AI 分析尚未完成，請稍候片刻，我們正在解讀你們的故事。"}
+      </p>
+
+      {/* AI Insight tag */}
+      <div className="mt-8 flex items-center gap-1">
+        <span className="text-[12px]" role="img" aria-label="sparkles">
+          ✨
+        </span>
+        <span className="font-body text-[12px] font-medium text-purple-accent">
+          AI 洞察分析
+        </span>
+      </div>
+    </section>
+  );
+}
