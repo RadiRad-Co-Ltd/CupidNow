@@ -1,73 +1,84 @@
-# React + TypeScript + Vite
+# CupidNow Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + TypeScript + Vite + Tailwind CSS v4 前端應用。
 
-Currently, two official plugins are available:
+## 開發環境
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev        # 開發伺服器 (http://localhost:5173)
+npm run build      # 生產建置 (tsc + vite)
+npm run lint       # ESLint 檢查
+npm run preview    # 預覽生產建置
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 目錄結構
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
 ```
+src/
+├── pages/
+│   ├── UploadPage.tsx        # 首頁：檔案上傳 + 加密 + 進度條
+│   └── DashboardPage.tsx     # 儀表板：組合所有分析區塊
+├── components/
+│   ├── FileDropzone.tsx      # 拖放上傳元件
+│   └── dashboard/            # 儀表板區塊元件 (12 個)
+│       ├── LoveScoreHero.tsx
+│       ├── BasicStatsCards.tsx
+│       ├── PersonBalance.tsx
+│       ├── ReplyBehavior.tsx
+│       ├── TimeHeatmap.tsx
+│       ├── TrendChart.tsx
+│       ├── GoodnightAnalysis.tsx
+│       ├── ColdWarTimeline.tsx
+│       ├── SentimentAnalysis.tsx
+│       ├── WordCloud.tsx
+│       ├── GoldenQuotes.tsx
+│       └── ShareCTA.tsx
+├── lib/
+│   └── encryption.ts         # WebCrypto AES-256-GCM 加密
+├── types/
+│   └── analysis.ts           # API 回應型別定義
+├── App.tsx                    # 路由設定
+├── main.tsx                   # 進入點
+└── index.css                  # Tailwind v4 主題設定
+```
+
+## 架構說明
+
+### 路由
+
+| 路徑 | 頁面 | 說明 |
+|------|------|------|
+| `/` | `UploadPage` | 檔案上傳頁面 |
+| `/dashboard` | `DashboardPage` | 分析結果儀表板（無資料時重導至 `/`） |
+
+### 資料流
+
+1. 使用者在 `UploadPage` 選擇 `.txt` 檔案
+2. `encryption.ts` 使用 WebCrypto API 產生隨機 AES-256 金鑰並加密檔案
+3. 加密檔案 + Base64 金鑰透過 `fetch` POST 至 `/api/analyze`
+4. 收到 `AnalysisResult` JSON 後存入 `App.tsx` 的 state
+5. 自動導向 `/dashboard`，`DashboardPage` 接收 result props 並渲染所有區塊
+
+### API 代理
+
+`vite.config.ts` 設定了開發代理：
+
+```typescript
+server: {
+  proxy: {
+    '/api': 'http://localhost:8000',
+  },
+}
+```
+
+### 設計系統
+
+所有自訂色彩與字型定義在 `src/index.css` 的 `@theme` 區塊中，使用 Tailwind v4 原生主題機制。元件中直接使用 `bg-rose-primary`、`text-text-primary`、`font-heading` 等 utility class。
+
+### 圖表
+
+使用 Recharts 3 繪製：
+- `ReplyBehavior` — 回覆速度分布 BarChart
+- `TrendChart` — 月度訊息量分組 BarChart
+- `TimeHeatmap` — 自製 CSS grid 熱力圖（非 Recharts）
