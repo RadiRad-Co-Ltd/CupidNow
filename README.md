@@ -15,7 +15,7 @@ CupidNow 是一款 LINE 聊天記錄分析工具，透過 AI 與統計分析，�
 - **時間模式** — 7x8 聊天熱力圖、月度趨勢圖、晚安/早安分析
 - **冷戰偵測** — 基於訊息量變化自動偵測冷戰期間
 - **文字分析** — jieba 中文斷詞產生文字雲、雙人專屬用語
-- **AI 情緒分析** — Claude API 分析情緒分布、產生金句、深度洞察
+- **AI 情緒分析** — Groq API (Llama 3.3 70B) 分析情緒分布、產生金句、深度洞察、聊天建議
 - **分享功能** — 生成精美分享卡圖片，支援 Web Share API 社群平台分享與 PNG 下載
 - **完整報告下載** — 一鍵將整頁儀表板截圖為 PNG 下載
 
@@ -37,7 +37,7 @@ CupidNow/
 │   │       ├── text_analysis.py  # 文字分析 (jieba)
 │   │       └── ai_analysis.py    # Claude AI 分析
 │   ├── Dockerfile            # 生產環境容器映像
-│   └── tests/                # 39 個測試
+│   └── tests/                # 42 個測試
 ├── frontend/         # React + Vite + Tailwind v4 前端
 │   ├── src/
 │   │   ├── pages/
@@ -63,7 +63,7 @@ CupidNow/
 
 - Python 3.12+
 - Node.js 18+
-- (選用) Anthropic API Key — 用於 AI 情緒分析
+- (選用) Groq API Key — 用於 AI 情緒分析
 
 ### 安裝與啟動
 
@@ -86,7 +86,7 @@ uvicorn app.main:app --reload --port 8000
 若需 AI 分析功能，設定環境變數：
 
 ```bash
-export ANTHROPIC_API_KEY=your-api-key-here
+export GROQ_API_KEY=your-groq-api-key-here
 ```
 
 **2. 前端**
@@ -108,7 +108,7 @@ npm run dev
 
 ## 執行測試
 
-**後端測試（39 個）：**
+**後端測試（42 個）：**
 
 ```bash
 cd backend
@@ -136,13 +136,13 @@ npm run build
 
 ### `POST /api/analyze`
 
-分析 LINE 聊天記錄。
+分析 LINE 聊天記錄（同步回應）。
 
 **請求（multipart/form-data）：**
 
 | 欄位 | 類型 | 說明 |
 |------|------|------|
-| `file` | File | LINE 匯出的 `.txt` 聊天記錄檔案 |
+| `file` | File | LINE 匯出的 `.txt` 聊天記錄檔案（最大 20MB） |
 | `skip_ai` | bool | (選用) 設為 `true` 跳過 AI 分析 |
 
 **回應（200）：**
@@ -203,9 +203,26 @@ npm run build
       "funniest": [{"quote": "你是不是偷吃我的零食", "sender": "小美", "date": "2024-01-20"}],
       "mostTouching": [{"quote": "不管怎樣我都在", "sender": "阿明", "date": "2024-03-01"}]
     },
-    "insight": "兩人互動頻繁且正向，阿明較常主動表達思念..."
+    "insight": "兩人互動頻繁且正向，阿明較常主動表達思念...",
+    "advice": [
+      "小美可以試著更主動表達想念",
+      "阿明的回覆速度很棒，繼續保持！",
+      "兩人可以多嘗試深入的話題交流"
+    ]
   }
 }
+```
+
+### `POST /api/analyze-stream`
+
+與 `/api/analyze` 相同的分析功能，但透過 SSE (Server-Sent Events) 串流回傳即時進度。前端使用此端點顯示分析進度條。
+
+**SSE 事件格式：**
+```
+data: {"progress": 15, "stage": "已解析 1,234 則訊息，計算基礎統計..."}
+data: {"progress": 45, "stage": "分析時間模式..."}
+data: {"progress": 75, "stage": "AI 正在解讀你們的故事..."}
+data: {"progress": 100, "stage": "完成！", "result": { ... }}
 ```
 
 **錯誤回應：**
@@ -213,7 +230,7 @@ npm run build
 | 狀態碼 | 說明 |
 |--------|------|
 | 400 | 編碼錯誤、或檔案中無訊息 |
-| 413 | 檔案超過 10MB |
+| 413 | 檔案超過 20MB |
 | 429 | 請求頻率超限（每 IP 每分鐘 10 次） |
 
 ## 安全設計
@@ -221,7 +238,7 @@ npm run build
 | 機制 | 說明 |
 |------|------|
 | 速率限制 | 每 IP 每 60 秒最多 10 次請求 |
-| 檔案大小限制 | 上傳檔案最大 10MB |
+| 檔案大小限制 | 上傳檔案最大 20MB |
 | 記憶體清除 | 解析後立即清除原文與中間資料 |
 | 無持久化儲存 | 所有處理在記憶體中完成，不寫入磁碟 |
 | 無需帳號 | 無使用者認證，無資料留存 |
@@ -236,8 +253,8 @@ npm run build
 | Python 3.12 | 執行環境 |
 | FastAPI | Web 框架 |
 | jieba | 中文斷詞 |
-| pandas | 資料處理 |
-| Anthropic SDK | Claude AI API |
+| SnowNLP | 情感強度評分（訊息取樣） |
+| Groq SDK | Llama 3.3 70B AI 分析 |
 | pytest + pytest-asyncio | 測試框架 |
 | Docker | 容器化部署 |
 
@@ -282,7 +299,7 @@ npm run build
 
 | 變數 | 必要 | 說明 |
 |------|------|------|
-| `ANTHROPIC_API_KEY` | 否 | Claude API 金鑰，未設定則跳過 AI 分析 |
+| `GROQ_API_KEY` | 否 | Groq API 金鑰，未設定則跳過 AI 分析 |
 | `CORS_ORIGIN` | 是 | 前端域名（`https://cupidnow.netlify.app`） |
 
 ## CI/CD 流程

@@ -112,19 +112,24 @@ tests/
 
 ### 7. AI 分析 (`ai_analysis.py`)
 
-透過 Claude API (claude-sonnet-4-5-20250929) 分析對話情緒：
-- **訊息取樣**：每日最多 8 則代表性訊息，避免 API 成本過高
-- **回傳**：心動分數 (0-100)、情緒分布、金句摘錄、深度洞察
+透過 Groq API (Llama 3.3 70B Versatile) 分析對話情緒：
+- **訊息篩選**：jieba 斷詞過濾無意義訊息（純數字、重複字元、停用詞）
+- **情感排序**：SnowNLP 計算每則訊息的情感強度，優先保留情感最濃烈的訊息（最多 500 則）
+- **回傳**：心動分數 (0-100)、情緒分布、金句摘錄、深度洞察、聊天建議
 - **容錯**：API 失敗時回傳 fallback 結果，不影響其他分析
 
-需設定環境變數 `ANTHROPIC_API_KEY`。
+需設定環境變數 `GROQ_API_KEY`。
+
+### 8. SSE 串流端點 (`analyze-stream`)
+
+`POST /api/analyze-stream` 提供與 `/api/analyze` 相同的分析功能，但透過 Server-Sent Events 串流回傳即時進度，前端使用此端點顯示分析進度條。
 
 ## 安全機制
 
 | 機制 | 說明 |
 |------|------|
 | 速率限制 | 每 IP 每 60 秒最多 10 次請求 |
-| 檔案大小限制 | 上傳檔案最大 10MB |
+| 檔案大小限制 | 上傳檔案最大 20MB |
 | 記憶體清除 | 解析後立即清除原文與中間資料 |
 | 無持久化儲存 | 所有處理在記憶體中完成，不寫入磁碟 |
 | CORS 白名單 | 僅允許 `localhost:5173` 與 `CORS_ORIGIN` 指定的域名 |
@@ -133,7 +138,7 @@ tests/
 
 | 變數 | 必要 | 說明 |
 |------|------|------|
-| `ANTHROPIC_API_KEY` | 否 | Claude API 金鑰，未設定則跳過 AI 分析 |
+| `GROQ_API_KEY` | 否 | Groq API 金鑰，未設定則跳過 AI 分析 |
 | `CORS_ORIGIN` | 生產環境必要 | 允許的前端域名（例如 `https://cupidnow.netlify.app`） |
 
 ## 部署
@@ -162,7 +167,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 - Health Check Path: `/api/health`
 
 **環境變數（Render 控制台）：**
-- `ANTHROPIC_API_KEY` — Claude API 金鑰
+- `GROQ_API_KEY` — Groq API 金鑰
 - `CORS_ORIGIN` — `https://cupidnow.netlify.app`
 
 ### CI/CD
@@ -184,4 +189,4 @@ python -m pytest tests/test_parser.py -v
 python -m pytest tests/ --cov=app --cov-report=term-missing
 ```
 
-目前共 39 個測試，全部通過。
+目前共 42 個測試，全部通過。

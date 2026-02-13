@@ -58,10 +58,11 @@ src/
 
 ### 資料流
 
-1. 使用者在 `UploadPage` 選擇 `.txt` 檔案
-2. 透過 `fetch` POST 至 `/api/analyze`（multipart/form-data）
-3. 收到 `AnalysisResult` JSON 後存入 `App.tsx` 的 state
-4. 自動導向 `/dashboard`，`DashboardPage` 接收 result props 並渲染所有區塊
+1. 使用者在 `UploadPage` 選擇 `.txt` 檔案（最大 20MB）
+2. 頁面載入時自動 ping `/api/health` 暖機後端（Render 免費方案有冷啟動延遲）
+3. 透過 `fetch` POST 至 `/api/analyze-stream`（SSE 串流），即時顯示分析進度
+4. 收到最終 `result` 事件後存入 `App.tsx` 的 state
+5. 自動導向 `/dashboard`，`DashboardPage` 接收 result props 並渲染所有區塊
 
 ### 開發預覽
 
