@@ -81,19 +81,27 @@ export function UploadPage({ onResult }: Props) {
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
 
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
+        // SSE events are separated by double newlines
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() ?? "";
+
+        for (const part of parts) {
+          // Collect all data: lines in this event block
+          const dataLines = part
+            .split("\n")
+            .filter((l) => l.startsWith("data: "))
+            .map((l) => l.slice(6));
+          if (dataLines.length === 0) continue;
+          const payload = dataLines.join("");
           try {
-            const evt = JSON.parse(line.slice(6));
+            const evt = JSON.parse(payload);
             if (evt.error) throw new Error(evt.error);
             if (evt.progress != null) setProgress(evt.progress);
             if (evt.stage) setStage(evt.stage);
             if (evt.result) finalResult = evt.result as AnalysisResult;
-          } catch (parseErr) {
-            if (parseErr instanceof Error && parseErr.message === (parseErr as Error).message) throw parseErr;
+          } catch {
+            // Incomplete or malformed event — skip
           }
         }
       }

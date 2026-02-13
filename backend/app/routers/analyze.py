@@ -111,6 +111,7 @@ async def analyze(
                 "basicStats": basic_stats,
                 "replyBehavior": reply_behavior,
                 "coldWars": cold_wars,
+                "textAnalysis": text_analysis,
             }
             ai_result = await analyze_with_ai(parsed["messages"], persons, ai_stats)
         except Exception:

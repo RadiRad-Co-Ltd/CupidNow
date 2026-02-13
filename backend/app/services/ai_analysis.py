@@ -1,7 +1,10 @@
 import re
 import json
+import logging
 import os
 from collections import defaultdict
+
+logger = logging.getLogger(__name__)
 
 import jieba
 from snownlp import SnowNLP
@@ -249,21 +252,29 @@ async def analyze_with_ai(
 
     response = await client.chat.completions.create(
         model="llama-3.3-70b-versatile",
-        max_tokens=2000,
+        max_tokens=3000,
         temperature=0.5,
         messages=[{"role": "user", "content": prompt}],
     )
 
     text = response.choices[0].message.content.strip()
+    finish_reason = response.choices[0].finish_reason
+
+    if finish_reason != "stop":
+        logger.warning("AI response truncated (finish_reason=%s), text length=%d", finish_reason, len(text))
 
     try:
         return json.loads(text)
     except json.JSONDecodeError:
         if "```" in text:
-            json_str = text.split("```")[1]
-            if json_str.startswith("json"):
-                json_str = json_str[4:]
-            return json.loads(json_str.strip())
+            try:
+                json_str = text.split("```")[1]
+                if json_str.startswith("json"):
+                    json_str = json_str[4:]
+                return json.loads(json_str.strip())
+            except (json.JSONDecodeError, IndexError):
+                pass
+        logger.error("AI JSON parse failed. finish_reason=%s, text preview: %s", finish_reason, text[:500])
         return _fallback_result()
 
 
