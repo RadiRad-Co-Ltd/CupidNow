@@ -113,19 +113,20 @@ def compute_text_analysis(parsed: dict) -> dict:
     all_words_by_person: dict[str, Counter] = {}
 
     for p in persons:
-        texts = [m.content for m in messages if m.sender == p and m.msg_type == "text"]
-        combined = _URL_RE.sub("", " ".join(texts))
-        words = jieba.lcut(combined)
-        # Filter: length >= 2, not stop words, not pure punctuation/numbers,
-        # not repeated single character (e.g. 哈哈哈哈哈, 嗯嗯嗯嗯)
-        filtered = [
-            w for w in words
-            if len(w) >= 2
-            and w not in STOP_WORDS
-            and not re.match(r"^[\d\W]+$", w)
-            and not re.match(r"^(.)\1+$", w)
-        ]
-        counter = Counter(filtered)
+        counter: Counter = Counter()
+        for m in messages:
+            if m.sender != p or m.msg_type != "text":
+                continue
+            text = _URL_RE.sub("", m.content)
+            words = jieba.lcut(text)
+            filtered = [
+                w for w in words
+                if len(w) >= 2
+                and w not in STOP_WORDS
+                and not re.match(r"^[\d\W]+$", w)
+                and not re.match(r"^(.)\1+$", w)
+            ]
+            counter.update(filtered)
         all_words_by_person[p] = counter
         word_cloud[p] = [
             {"word": w, "count": c}

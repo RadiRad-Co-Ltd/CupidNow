@@ -1,4 +1,5 @@
 import asyncio
+import gc
 import json
 import logging
 import time
@@ -44,31 +45,6 @@ def _sse_event(data: dict) -> str:
     return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
-def _run_pipeline(text: str, skip_ai: bool) -> dict:
-    """Run the full analysis pipeline synchronously, return result dict."""
-    parsed = parse_line_chat(text)
-    if not parsed["messages"]:
-        raise ValueError("No messages found in file")
-
-    persons = parsed["persons"]
-    basic_stats = compute_basic_stats(parsed)
-    reply_behavior = compute_reply_behavior(parsed)
-    time_patterns = compute_time_patterns(parsed)
-    cold_wars = detect_cold_wars(parsed)
-    text_analysis = compute_text_analysis(parsed)
-
-    result = {
-        "persons": persons,
-        "basicStats": basic_stats,
-        "replyBehavior": reply_behavior,
-        "timePatterns": time_patterns,
-        "coldWars": cold_wars,
-        "textAnalysis": text_analysis,
-        "_parsed": parsed,
-    }
-    return result
-
-
 @router.post("/analyze")
 async def analyze(
     request: Request,
@@ -90,7 +66,7 @@ async def analyze(
         raw_data = b""
 
     parsed = parse_line_chat(text)
-    text = ""
+    del text
 
     if not parsed["messages"]:
         raise HTTPException(status_code=400, detail="No messages found in file")
@@ -118,7 +94,8 @@ async def analyze(
             logger.exception("AI analysis failed")
             ai_result = None
 
-    parsed = {}
+    del parsed
+    gc.collect()
 
     result = {
         "persons": persons,
@@ -209,13 +186,20 @@ async def analyze_stream(
                     "coldWars": cold_wars,
                     "textAnalysis": text_analysis,
                 }
-                ai_result = await analyze_with_ai(parsed["messages"], persons, ai_stats)
+                # Extract messages before clearing parsed
+                messages = parsed["messages"]
+                ai_result = await analyze_with_ai(messages, persons, ai_stats)
+                del messages
             except AIRateLimitError:
                 logger.warning("AI rate limited, skipping AI analysis")
                 ai_warning = "AI 分析額度已達今日上限，其他數據分析仍然完整！請稍後再試即可補上 AI 洞察。"
             except Exception:
                 logger.exception("AI analysis failed")
                 ai_result = None
+
+        # Release parsed messages from memory
+        del parsed
+        gc.collect()
 
         if ai_result:
             result["aiAnalysis"] = ai_result

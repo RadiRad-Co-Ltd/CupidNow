@@ -2,12 +2,11 @@ import re
 import json
 import logging
 import os
-from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 
-import jieba
-from snownlp import SnowNLP
+# Lazy imports to reduce baseline memory
+# jieba, snownlp, groq, google-genai are imported on first use
 from app.services.parser import Message
 from app.services.text_analysis import STOP_WORDS
 
@@ -29,6 +28,7 @@ def _is_meaningful(content: str) -> bool:
     if _NOISE_RE.match(text):
         return False
 
+    import jieba
     words = jieba.lcut(text)
     substantive = [
         w for w in words
@@ -49,6 +49,7 @@ def _sentiment_intensity(content: str) -> float:
     Neutral (0.50) → 0.0
     """
     try:
+        from snownlp import SnowNLP
         score = SnowNLP(content).sentiments
         return abs(score - 0.5)
     except Exception:
@@ -91,8 +92,13 @@ def sample_messages(
     if len(meaningful) <= max_total:
         return meaningful
 
-    # Phase 3: score each message by SnowNLP sentiment intensity,
-    # keep the most emotionally charged ones
+    # Phase 3: uniform sampling to reduce to ~2x budget, then score
+    # This avoids running SnowNLP on thousands of messages
+    import random
+    if len(meaningful) > max_total * 3:
+        random.seed(42)
+        meaningful = random.sample(meaningful, max_total * 3)
+
     scored = [(m, _sentiment_intensity(m.content)) for m in meaningful]
     scored.sort(key=lambda x: x[1], reverse=True)
     selected = [m for m, _ in scored[:max_total]]
