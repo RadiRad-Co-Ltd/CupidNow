@@ -103,91 +103,219 @@ STOP_WORDS = {
 
 _URL_RE = re.compile(r"https?://\S+|www\.\S+", re.IGNORECASE)
 
-# ── Shared interest category keywords ──
-# Suffixes / patterns that hint at a category
-_PLACE_HINTS = {
-    "區", "路", "街", "站", "山", "湖", "海", "灣", "島", "港", "園",
-    "寺", "廟", "堂", "館", "場", "城", "鎮", "村", "里", "巷",
-    "夜市", "老街", "商圈", "百貨", "公園", "車站", "機場", "碼頭",
-}
-_FOOD_HINTS = {
-    "麵", "飯", "湯", "粥", "鍋", "餅", "包", "糕", "酥", "捲",
-    "雞", "豬", "牛", "魚", "蝦", "蛋", "肉", "菜", "豆", "奶",
-    "茶", "咖啡", "珍奶", "奶茶", "拿鐵", "啤酒", "紅酒",
-    "拉麵", "火鍋", "壽司", "披薩", "漢堡", "炸雞", "滷味",
-    "甜點", "蛋糕", "冰淇淋", "布丁", "鬆餅", "巧克力",
-    "餐廳", "小吃", "早餐", "午餐", "晚餐", "宵夜", "便當",
-}
-_SHOW_HINTS = {
-    "電影", "影集", "韓劇", "日劇", "陸劇", "台劇", "美劇",
-    "動漫", "動畫", "漫畫", "Netflix", "netflix", "Disney",
-    "綜藝", "節目", "紀錄片", "影片", "預告",
-}
-_MUSIC_HINTS = {
-    "歌", "曲", "專輯", "演唱會", "音樂", "樂團", "歌手",
-    "Spotify", "spotify", "KKBOX", "kkbox", "YouTube", "youtube",
-    "MV", "mv", "播放", "旋律",
-}
-_ACTIVITY_HINTS = {
-    "逛街", "看電影", "散步", "跑步", "健身", "游泳", "爬山",
-    "旅行", "出國", "露營", "野餐", "唱歌", "KTV", "桌遊",
-    "遊戲", "打球", "瑜珈", "騎車", "開車", "搭車",
-    "購物", "買東西", "約會", "聚餐", "慶祝",
+# ── Shared interest: explicit word-to-category lookup ──
+# Built from user_dict.txt categories. Only exact matches — no suffix guessing.
+import os as _os
+import logging as _logging
+
+_interest_logger = _logging.getLogger(__name__)
+
+_CATEGORY_ORDER = ["愛去的地方", "愛吃的東西", "愛看的劇", "愛聽的音樂", "常一起做的事"]
+
+# Explicit word sets — no single-char suffix matching
+_PLACE_WORDS: set[str] = set()
+_FOOD_WORDS: set[str] = set()
+_SHOW_WORDS: set[str] = set()
+_MUSIC_WORDS: set[str] = set()
+_ACTIVITY_WORDS: set[str] = set()
+
+# Generic words to exclude even if they match a category
+_BORING_WORDS = {
+    "吃飯", "逛街", "買東西", "回家", "出門", "出去", "上班", "下班",
+    "上課", "下課", "睡覺", "起床", "走路", "開車", "騎車", "搭車",
+    "聊天", "拍照", "購物", "打電話", "傳訊息", "看影片",
+    "早餐", "午餐", "晚餐", "白飯", "喝水",
 }
 
-_CATEGORIES = [
-    ("愛去的地方", _PLACE_HINTS),
-    ("愛吃的東西", _FOOD_HINTS),
-    ("愛看的劇", _SHOW_HINTS),
-    ("愛聽的音樂", _MUSIC_HINTS),
-    ("常一起做的事", _ACTIVITY_HINTS),
-]
+_word_to_category: dict[str, str] = {}
+_interest_loaded = False
 
 
-def _categorize_word(word: str) -> str | None:
-    """Return category name if word matches any hint, else None."""
-    for category, hints in _CATEGORIES:
-        if word in hints:
-            return category
-        for hint in hints:
-            if len(hint) >= 2 and hint in word:
-                return category
-            if len(word) >= 2 and word.endswith(hint) and len(hint) == 1:
-                return category
-    return None
+def _load_interest_words():
+    """Build word→category lookup from user_dict.txt and hardcoded sets."""
+    global _interest_loaded
+    if _interest_loaded:
+        return
+    _interest_loaded = True
+
+    # Hardcoded high-value words per category (always available even without user_dict)
+    _PLACE_WORDS.update({
+        # 夜市
+        "士林夜市", "饒河夜市", "寧夏夜市", "通化夜市", "逢甲夜市",
+        "六合夜市", "瑞豐夜市", "師大夜市", "公館夜市", "花園夜市",
+        "羅東夜市", "基隆廟口", "樂華夜市", "南機場夜市",
+        # 景點
+        "台北101", "陽明山", "象山步道", "貓空纜車", "九份老街",
+        "十分老街", "淡水老街", "西門町", "永康街", "迪化街",
+        "華山文創", "松菸文創", "日月潭", "阿里山", "太魯閣",
+        "清境農場", "合歡山", "墾丁", "綠島", "蘭嶼", "小琉球",
+        "澎湖", "金門", "馬祖", "高美濕地", "彩虹眷村",
+        "駁二藝術特區", "奇美博物館", "赤崁樓", "安平古堡",
+        "北投溫泉", "烏來溫泉", "礁溪溫泉", "知本溫泉",
+        "七星潭", "伯朗大道", "三仙台", "鵝鑾鼻燈塔",
+        "忘憂森林", "溪頭", "杉林溪", "宮原眼科", "審計新村",
+        # 行政區
+        "信義區", "大安區", "中山區", "松山區", "內湖區", "士林區",
+        "北投區", "中正區", "萬華區", "文山區", "南港區",
+        "板橋區", "新莊區", "三重區", "永和區", "中和區",
+        "新店區", "淡水區", "汐止區", "土城區", "蘆洲區", "林口區",
+        "桃園區", "中壢區", "竹北市",
+        # 商圈/百貨
+        "信義商圈", "東區商圈", "西門商圈", "逢甲商圈", "一中商圈",
+        "新光三越", "微風廣場", "誠品書店",
+        # 捷運站
+        "台北車站", "忠孝復興", "忠孝敦化", "市政府站", "西門站",
+        "板橋站", "美麗島站",
+    })
+
+    _FOOD_WORDS.update({
+        "珍珠奶茶", "珍奶", "鹹酥雞", "雞排", "滷味", "牛肉麵",
+        "小籠包", "臭豆腐", "蚵仔煎", "大腸包小腸", "胡椒餅",
+        "車輪餅", "豬血糕", "蚵仔麵線", "魯肉飯", "滷肉飯",
+        "鳳梨酥", "太陽餅", "芋圓", "豆花", "芒果冰", "愛玉",
+        "麻辣鍋", "薑母鴨", "羊肉爐", "麻辣燙", "蛋餅",
+        "拉麵", "壽司", "生魚片", "義大利麵", "披薩", "漢堡",
+        "鬆餅", "可頌", "提拉米蘇", "舒芙蕾", "千層蛋糕",
+        "冰淇淋", "拿鐵", "卡布奇諾", "美式咖啡", "手沖咖啡",
+        "抹茶拿鐵", "黑糖鮮奶", "波霸奶茶", "黑糖波霸",
+        "火鍋", "涮涮鍋", "石頭鍋", "麻辣火鍋", "海鮮鍋",
+        "韓式炸雞", "韓式烤肉", "壽喜燒", "燒肉",
+        "咖哩飯", "炸雞排", "鍋貼", "水餃", "蔥油餅",
+        "調酒", "啤酒", "紅酒", "威士忌", "精釀啤酒",
+        "下午茶", "宵夜", "早午餐", "吃到飽", "Buffet", "brunch",
+        "鼎泰豐", "海底撈", "築間", "馬辣", "爭鮮", "壽司郎",
+        "星巴克", "路易莎", "五十嵐", "迷客夏", "可不可",
+        "春水堂", "老虎堂", "大苑子", "清心福全",
+    })
+
+    _SHOW_WORDS.update({
+        "電影", "影集", "韓劇", "日劇", "陸劇", "台劇", "美劇",
+        "動漫", "動畫", "漫畫", "Netflix", "Disney+",
+        "綜藝", "紀錄片", "追劇", "看劇", "看電影",
+        "YouTube", "愛奇藝",
+    })
+
+    _MUSIC_WORDS.update({
+        "演唱會", "音樂", "樂團", "歌手", "音樂祭", "音樂節",
+        "Spotify", "KKBOX", "Apple Music",
+        "彈吉他", "彈鋼琴", "打鼓", "彈烏克麗麗",
+        "聽音樂", "聽歌", "唱歌", "唱KTV", "KTV", "K歌",
+    })
+
+    _ACTIVITY_WORDS.update({
+        "健身", "重訓", "瑜珈", "游泳", "跑步", "慢跑", "路跑",
+        "爬山", "登山", "健行", "露營", "野餐", "釣魚",
+        "衝浪", "潛水", "浮潛", "滑雪", "攀岩", "溯溪",
+        "打籃球", "打棒球", "打排球", "打羽球", "打桌球",
+        "打網球", "踢足球", "打保齡球",
+        "桌遊", "密室逃脫", "夾娃娃", "打電動", "玩遊戲",
+        "看展覽", "看表演", "看舞台劇", "泡溫泉", "做SPA",
+        "烘焙", "料理", "下廚", "手作",
+        "攝影", "畫畫", "閱讀", "寫日記",
+        "旅行", "旅遊", "出國", "自由行", "環島",
+        "約會", "聚餐", "散步", "騎腳踏車",
+        "遊樂園", "六福村", "劍湖山", "動物園", "水族館",
+    })
+
+    # Build word→category lookup
+    for w in _PLACE_WORDS:
+        _word_to_category[w] = "愛去的地方"
+    for w in _FOOD_WORDS:
+        _word_to_category[w] = "愛吃的東西"
+    for w in _SHOW_WORDS:
+        _word_to_category[w] = "愛看的劇"
+    for w in _MUSIC_WORDS:
+        _word_to_category[w] = "愛聽的音樂"
+    for w in _ACTIVITY_WORDS:
+        _word_to_category[w] = "常一起做的事"
+
+    # Also load from user_dict.txt — words with pos 'ns' → place, 'n' with food keywords → food
+    data_dir = _os.path.join(_os.path.dirname(__file__), "..", "..", "data")
+    user_dict = _os.path.join(data_dir, "user_dict.txt")
+    if _os.path.exists(user_dict):
+        added = 0
+        with open(user_dict, encoding="utf-8") as f:
+            for line in f:
+                parts = line.strip().split()
+                if len(parts) >= 3:
+                    word, _, pos = parts[0], parts[1], parts[2]
+                    if len(word) >= 2 and word not in _word_to_category:
+                        if pos == "ns":
+                            _word_to_category[word] = "愛去的地方"
+                            added += 1
+                        elif pos == "nz":
+                            # brands — skip, not an interest category
+                            pass
+        _interest_logger.info("interest lookup: %d from hardcoded + %d from user_dict", len(_word_to_category) - added, added)
+
+
+def _tfidf_score(word: str, tf: int, total_msgs: int) -> float:
+    """TF-IDF score using jieba's built-in word frequency as corpus proxy.
+
+    High score = word is frequent in THIS chat but rare in general Chinese.
+    This naturally suppresses generic words like 吃飯/逛街 (high corpus freq)
+    and promotes distinctive words like 珍珠奶茶/密室逃脫 (low corpus freq).
+    """
+    import math
+    import jieba
+
+    # TF: normalize by total message count
+    tf_norm = tf / max(total_msgs, 1)
+
+    # IDF: use jieba's corpus frequency as a proxy
+    # jieba.dt.FREQ stores {word: freq_count}, total is jieba.dt.total
+    corpus_freq = jieba.dt.FREQ.get(word, 0)
+    corpus_total = jieba.dt.total or 1
+    # Smoothed IDF — words not in jieba dict get highest IDF
+    if corpus_freq > 0:
+        idf = math.log((corpus_total + 1) / (corpus_freq + 1))
+    else:
+        # Not in jieba dict at all — very distinctive (custom dict / rare word)
+        idf = math.log(corpus_total + 1)
+
+    return tf_norm * idf
 
 
 def _extract_shared_interests(
-    all_words_by_person: dict[str, Counter], persons: list[str]
+    all_words_by_person: dict[str, Counter], persons: list[str],
+    total_msgs: int = 0,
 ) -> list[dict]:
-    """Extract shared interests from word frequency data."""
+    """Extract shared interests using TF-IDF scoring.
+
+    1. Only words BOTH people mention (truly shared).
+    2. Categorize by explicit word→category lookup (no suffix guessing).
+    3. Rank by TF-IDF: frequent in this chat but rare in general Chinese.
+    """
     if len(persons) < 2:
         return []
 
+    _load_interest_words()
+
     p1, p2 = persons[0], persons[1]
-    # Merge both persons' word counts
-    combined = Counter()
-    for w in set(all_words_by_person[p1]) | set(all_words_by_person[p2]):
-        combined[w] = all_words_by_person[p1].get(w, 0) + all_words_by_person[p2].get(w, 0)
+    shared_words = set(all_words_by_person[p1]) & set(all_words_by_person[p2])
 
-    # Categorize words
-    categorized: dict[str, list[tuple[str, int]]] = {}
-    for word, count in combined.most_common(500):
-        cat = _categorize_word(word)
-        if cat:
-            if cat not in categorized:
-                categorized[cat] = []
-            if len(categorized[cat]) < 5:
-                categorized[cat].append((word, count))
+    categorized: dict[str, list[tuple[str, int, float]]] = {}
+    for w in shared_words:
+        if w in _BORING_WORDS or len(w) < 2:
+            continue
+        cat = _word_to_category.get(w)
+        if not cat:
+            continue
+        total = all_words_by_person[p1][w] + all_words_by_person[p2][w]
+        score = _tfidf_score(w, total, total_msgs)
+        if cat not in categorized:
+            categorized[cat] = []
+        categorized[cat].append((w, total, score))
 
-    # Build result in fixed category order
+    # Sort by TF-IDF score (not raw count), take top 6
     result = []
-    for cat_name, _ in _CATEGORIES:
+    for cat_name in _CATEGORY_ORDER:
         items = categorized.get(cat_name, [])
         if items:
+            items.sort(key=lambda x: x[2], reverse=True)
             result.append({
                 "category": cat_name,
-                "items": [{"name": w, "count": c} for w, c in items],
+                "items": [{"name": w, "count": c} for w, c, _ in items[:6]],
             })
 
     return result
@@ -316,7 +444,7 @@ def compute_text_analysis(parsed: dict) -> dict:
     else:
         unique_phrases = []
 
-    shared_interests = _extract_shared_interests(all_words_by_person, persons)
+    shared_interests = _extract_shared_interests(all_words_by_person, persons, total_msgs=len(messages))
 
     return {
         "wordCloud": word_cloud,
