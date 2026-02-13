@@ -110,7 +110,7 @@ import logging as _logging
 
 _interest_logger = _logging.getLogger(__name__)
 
-_CATEGORY_ORDER = ["愛去的地方", "愛吃的東西", "愛看的劇", "愛聽的音樂", "常一起做的事"]
+_CATEGORY_ORDER = ["愛去的地方", "愛吃的東西", "愛看的劇", "愛聽的音樂", "常一起做的事"]  # noqa: kept for reference
 
 # Explicit word sets — no single-char suffix matching
 _PLACE_WORDS: set[str] = set()
@@ -294,123 +294,68 @@ def _tfidf_score(word: str, tf: int, total_msgs: int) -> float:
     return tf_norm * idf
 
 
-def _extract_shared_interests(
-    all_words_by_person: dict[str, Counter], persons: list[str],
-    total_msgs: int = 0,
-) -> list[dict]:
-    """Extract shared interests using TF-IDF scoring.
+def build_interest_context(
+    all_words_by_person: dict[str, Counter],
+    persons: list[str],
+    messages: list[Message],
+    all_words: list[list[str]],
+    total_msgs: int,
+) -> str:
+    """Build structured context for AI to categorize shared interests.
 
-    1. Only words BOTH people mention (truly shared).
-    2. Categorize by explicit word→category lookup (no suffix guessing).
-    3. Rank by TF-IDF: frequent in this chat but rare in general Chinese.
+    Finds TF-IDF top distinctive words shared by both persons, then
+    traces back to original messages for context. The AI uses this
+    to produce accurate sharedInterests with specific proper nouns.
     """
     if len(persons) < 2:
-        return []
-
-    _load_interest_words()
+        return ""
 
     p1, p2 = persons[0], persons[1]
-    shared_words = set(all_words_by_person[p1]) & set(all_words_by_person[p2])
+    shared = set(all_words_by_person[p1]) & set(all_words_by_person[p2])
 
-    categorized: dict[str, list[tuple[str, int, float]]] = {}
-    for w in shared_words:
+    # Score by TF-IDF, filter boring
+    scored = []
+    for w in shared:
         if w in _BORING_WORDS or len(w) < 2:
-            continue
-        cat = _word_to_category.get(w)
-        if not cat:
             continue
         total = all_words_by_person[p1][w] + all_words_by_person[p2][w]
         score = _tfidf_score(w, total, total_msgs)
-        if cat not in categorized:
-            categorized[cat] = []
-        categorized[cat].append((w, total, score))
+        scored.append((w, total, score))
 
-    # Sort by TF-IDF score (not raw count), take top 6
-    result = []
-    for cat_name in _CATEGORY_ORDER:
-        items = categorized.get(cat_name, [])
-        if items:
-            items.sort(key=lambda x: x[2], reverse=True)
-            result.append({
-                "category": cat_name,
-                "items": [{"name": w, "count": c} for w, c, _ in items[:6]],
-            })
+    scored.sort(key=lambda x: x[2], reverse=True)
+    top_words = scored[:200]
 
-    return result
+    if not top_words:
+        return ""
+
+    # Build word→example messages index
+    word_examples: dict[str, list[str]] = {w: [] for w, _, _ in top_words}
+    top_word_set = {w for w, _, _ in top_words}
+
+    for msg, words in zip(messages, all_words):
+        if msg.msg_type != "text":
+            continue
+        msg_word_set = set(words)
+        for tw in top_word_set & msg_word_set:
+            if len(word_examples[tw]) < 2:
+                word_examples[tw].append(f"{msg.sender}: {msg.content[:60]}")
+
+    # Format as text block for AI prompt
+    lines = ["── 雙方共同提到的獨特詞彙（TF-IDF 排序，含原句）──"]
+    for w, count, _ in top_words[:100]:  # Cap at 100 to stay within token budget
+        examples = word_examples.get(w, [])
+        ex_str = " | ".join(examples) if examples else ""
+        lines.append(f"• {w} ({count}次) → {ex_str}")
+
+    return "\n".join(lines)
 
 
-def merge_shared_interests(
-    jieba_interests: list[dict], ai_interests: list | None
-) -> list[dict]:
-    """Merge jieba keyword-based and AI-extracted shared interests.
+def compute_text_analysis(parsed: dict) -> tuple[dict, str]:
+    """Compute word cloud, unique phrases, and interest context for AI.
 
-    jieba provides {category, items: [{name, count}]} with frequency counts.
-    AI provides {category, items: [str]} with richer context but no counts.
-    Result: deduplicated, jieba items first (with counts), AI-only items appended.
+    Returns (text_analysis_dict, interest_context_str).
+    text_analysis_dict includes a "_word_idf" key for sample_messages().
     """
-    if not ai_interests:
-        return jieba_interests
-
-    # Index jieba results by category
-    merged: dict[str, dict[str, int | None]] = {}
-    category_order: list[str] = []
-
-    for entry in jieba_interests:
-        cat = entry["category"]
-        if cat not in merged:
-            merged[cat] = {}
-            category_order.append(cat)
-        for item in entry.get("items", []):
-            if isinstance(item, dict):
-                merged[cat][item["name"]] = item.get("count")
-            else:
-                merged[cat][str(item)] = None
-
-    # Merge AI results (filter out generic category words the AI might still produce)
-    _ai_reject = {
-        "韓劇", "日劇", "陸劇", "台劇", "美劇", "追劇", "看劇",
-        "電影", "看電影", "動漫", "動畫", "漫畫", "綜藝", "紀錄片",
-        "唱歌", "音樂", "聽歌", "聽音樂", "歌手", "樂團",
-        "散步", "跑步", "運動", "旅行", "旅遊", "出國",
-        "約會", "聚餐", "健身", "游泳", "甜點", "飲料", "咖啡",
-    }
-    for entry in ai_interests:
-        cat = entry.get("category", "")
-        if not cat:
-            continue
-        if cat not in merged:
-            merged[cat] = {}
-            category_order.append(cat)
-        for item in entry.get("items", []):
-            name = item["name"] if isinstance(item, dict) else str(item)
-            if name in _ai_reject:
-                continue
-            if name not in merged[cat]:
-                merged[cat][name] = item.get("count") if isinstance(item, dict) else None
-
-    # Build final list, cap 8 items per category
-    result = []
-    for cat in category_order:
-        items = merged[cat]
-        if not items:
-            continue
-        sorted_items = sorted(
-            items.items(),
-            key=lambda x: (x[1] is not None, x[1] or 0),
-            reverse=True,
-        )
-        result.append({
-            "category": cat,
-            "items": [
-                {"name": n, "count": c} if c is not None else {"name": n}
-                for n, c in sorted_items[:8]
-            ],
-        })
-
-    return result
-
-
-def compute_text_analysis(parsed: dict) -> dict:
     messages: list[Message] = parsed["messages"]
     persons: list[str] = parsed["persons"]
 
@@ -471,10 +416,42 @@ def compute_text_analysis(parsed: dict) -> dict:
     else:
         unique_phrases = []
 
-    shared_interests = _extract_shared_interests(all_words_by_person, persons, total_msgs=len(messages))
+    # Build per-message word lists aligned with original messages (for sample_messages)
+    # all_words above is aligned with all_texts (per-person), we need per-message alignment
+    msg_words: list[list[str]] = []
+    for m in messages:
+        if m.msg_type == "text":
+            cleaned = _URL_RE.sub("", m.content)
+            msg_words.append(segmenter.cut(cleaned))
+        else:
+            msg_words.append([])
 
-    return {
+    # Build word IDF from all segmented words (for TF-IDF message scoring)
+    import math
+    import jieba
+    word_idf: dict[str, float] = {}
+    all_unique_words: set[str] = set()
+    for wl in msg_words:
+        all_unique_words.update(w for w in wl if len(w) >= 2 and w not in STOP_WORDS)
+    for w in all_unique_words:
+        corpus_freq = jieba.dt.FREQ.get(w, 0)
+        corpus_total = jieba.dt.total or 1
+        if corpus_freq > 0:
+            word_idf[w] = math.log((corpus_total + 1) / (corpus_freq + 1))
+        else:
+            word_idf[w] = math.log(corpus_total + 1)
+
+    # Build interest context for AI (TF-IDF distinctive words + example sentences)
+    interest_context = build_interest_context(
+        all_words_by_person, persons, messages, msg_words, len(messages),
+    )
+
+    text_analysis = {
         "wordCloud": word_cloud,
         "uniquePhrases": unique_phrases,
-        "sharedInterests": shared_interests,
+        "sharedInterests": [],  # Will be filled by AI result
+        "_word_idf": word_idf,  # Internal: for sample_messages TF-IDF scoring
+        "_msg_words": msg_words,  # Internal: per-message word lists
     }
+
+    return text_analysis, interest_context

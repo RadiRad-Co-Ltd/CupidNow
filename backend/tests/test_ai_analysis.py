@@ -18,7 +18,7 @@ def _make_messages():
 
 def test_sample_messages_caps_at_max():
     msgs = _make_messages()
-    sampled = sample_messages(msgs, max_total=10)
+    sampled = sample_messages(msgs, max_final=10)
     assert len(sampled) == 10
 
 
@@ -84,7 +84,7 @@ def test_sample_prioritizes_emotional_messages():
                 content="剛剛走過公園回到家", msg_type="text"),
     ]
     # Only keep 2 — should prefer the emotional ones
-    sampled = sample_messages(msgs, max_total=2)
+    sampled = sample_messages(msgs, max_final=2)
     assert len(sampled) == 2
     contents = {m.content for m in sampled}
     # At least one of the emotional messages should be kept

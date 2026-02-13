@@ -82,37 +82,64 @@ def _get_gemini_client():
     return _gemini_client
 
 
+def _message_tfidf_score(words: list[str], word_idf: dict[str, float]) -> float:
+    """Sum of IDF scores for non-stop words in a message."""
+    return sum(word_idf.get(w, 0) for w in words if len(w) >= 2 and w not in STOP_WORDS)
+
+
 def sample_messages(
-    messages: list[Message], max_total: int = 500
+    messages: list[Message],
+    msg_words: list[list[str]] | None = None,
+    word_idf: dict[str, float] | None = None,
+    max_tfidf: int = 1500,
+    max_final: int = 800,
 ) -> list[Message]:
-    """Filter out trivial messages, then prioritize by sentiment intensity."""
+    """Two-stage sampling: TF-IDF top content → SnowNLP top sentiment.
+
+    1. Filter meaningful messages
+    2. Score by TF-IDF (sum of word IDF scores) → keep top max_tfidf
+    3. Score by SnowNLP sentiment intensity → keep top max_final
+    4. Re-sort chronologically for AI
+    """
     if not messages:
         return []
 
-    # Phase 1: CKIP + STOP_WORDS — remove noise
-    meaningful = [
-        m for m in messages
-        if m.msg_type == "text" and _is_meaningful(m.content)
-    ]
+    # Phase 1: filter meaningful messages, pair with word lists
+    if msg_words and len(msg_words) == len(messages):
+        meaningful = [
+            (m, words) for m, words in zip(messages, msg_words)
+            if m.msg_type == "text" and _is_meaningful(m.content)
+        ]
+    else:
+        meaningful = [
+            (m, []) for m in messages
+            if m.msg_type == "text" and _is_meaningful(m.content)
+        ]
+
+    logger.info("sample_messages: %d total → %d meaningful", len(messages), len(meaningful))
 
     # Phase 2: if within budget, return all
-    if len(meaningful) <= max_total:
-        return meaningful
+    if len(meaningful) <= max_final:
+        return [m for m, _ in meaningful]
 
-    # Phase 3: uniform sampling to reduce to ~2x budget, then score
-    # This avoids running SnowNLP on thousands of messages
-    import random
-    if len(meaningful) > max_total * 3:
-        random.seed(42)
-        meaningful = random.sample(meaningful, max_total * 3)
+    # Phase 3: TF-IDF score → top max_tfidf
+    if word_idf and len(meaningful) > max_tfidf:
+        scored = [(m, _message_tfidf_score(words, word_idf)) for m, words in meaningful]
+        scored.sort(key=lambda x: x[1], reverse=True)
+        tfidf_selected = [(m, s) for m, s in scored[:max_tfidf]]
+        logger.info("sample_messages: TF-IDF %d → %d", len(meaningful), len(tfidf_selected))
+    else:
+        tfidf_selected = [(m, 0) for m, _ in meaningful]
 
-    scored = [(m, _sentiment_intensity(m.content)) for m in meaningful]
-    scored.sort(key=lambda x: x[1], reverse=True)
-    selected = [m for m, _ in scored[:max_total]]
+    # Phase 4: SnowNLP sentiment intensity → top max_final
+    sentiment_scored = [(m, _sentiment_intensity(m.content)) for m, _ in tfidf_selected]
+    sentiment_scored.sort(key=lambda x: x[1], reverse=True)
+    final = [m for m, _ in sentiment_scored[:max_final]]
+    logger.info("sample_messages: SnowNLP → %d final", len(final))
 
-    # Re-sort by timestamp so the AI sees messages in chronological order
-    selected.sort(key=lambda m: m.timestamp)
-    return selected
+    # Phase 5: re-sort chronologically
+    final.sort(key=lambda m: m.timestamp)
+    return final
 
 
 def _format_stats_block(stats: dict | None) -> str:
@@ -170,7 +197,10 @@ def _format_stats_block(stats: dict | None) -> str:
     return chr(10).join(lines)
 
 
-def build_prompt(messages: list[Message], persons: list[str], stats: dict | None = None) -> str:
+def build_prompt(
+    messages: list[Message], persons: list[str],
+    stats: dict | None = None, interest_context: str = "",
+) -> str:
     p1 = persons[0]
     p2 = persons[1] if len(persons) > 1 else "Person2"
 
@@ -191,6 +221,9 @@ def build_prompt(messages: list[Message], persons: list[str], stats: dict | None
         timeline.append(f"[{m.timestamp.strftime('%m/%d %H:%M')}] {m.sender}: {content}")
 
     stats_block = _format_stats_block(stats)
+
+    # Interest context block (TF-IDF distinctive words + example sentences)
+    interest_block = f"\n\n{interest_context}\n" if interest_context else ""
 
     return f"""你是一位超級懂感情的閨蜜分析師，說話活潑、帶點俏皮，擅長從聊天記錄中看出兩個人之間的微妙互動和化學反應。
 
@@ -222,7 +255,7 @@ def build_prompt(messages: list[Message], persons: list[str], stats: dict | None
 
 ── 完整對話時間軸（看互動節奏）──
 {chr(10).join(timeline[-120:])}
-
+{interest_block}
 ⚠️ sharedInterests 填寫規則（非常重要）：
 items 必須是對話中出現的【具體專有名詞】，不要寫模糊的類別詞。
 ✅ 正確範例：寄生上流、黑暗榮耀、鬼滅之刃、周杰倫、五月天、晴天、鼎泰豐、九份、北投溫泉、星巴克、小美（朋友暱稱）
@@ -372,13 +405,16 @@ async def _call_gemini(prompt: str) -> dict | None:
 
 async def analyze_with_ai(
     messages: list[Message], persons: list[str], stats: dict | None = None,
+    interest_context: str = "",
+    msg_words: list[list[str]] | None = None,
+    word_idf: dict[str, float] | None = None,
 ) -> dict:
     """Call AI API with Groq → Gemini fallback chain."""
-    sampled = sample_messages(messages)
+    sampled = sample_messages(messages, msg_words=msg_words, word_idf=word_idf)
     if not sampled:
         return _fallback_result()
 
-    prompt = build_prompt(sampled, persons, stats)
+    prompt = build_prompt(sampled, persons, stats, interest_context=interest_context)
 
     # 1. Try Groq (faster)
     result = await _call_groq(prompt)

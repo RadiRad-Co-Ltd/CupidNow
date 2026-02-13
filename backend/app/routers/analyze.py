@@ -14,7 +14,7 @@ from app.services.first_conversation import extract_first_conversation
 from app.services.parser import parse_line_chat
 from app.services.reply_analysis import compute_reply_behavior
 from app.services.stats import compute_basic_stats
-from app.services.text_analysis import compute_text_analysis, merge_shared_interests
+from app.services.text_analysis import compute_text_analysis
 from app.services.time_patterns import compute_time_patterns
 from app.services.transfer_analysis import compute_transfer_analysis
 
@@ -79,9 +79,13 @@ async def analyze(
     reply_behavior = compute_reply_behavior(parsed)
     time_patterns = compute_time_patterns(parsed)
     cold_wars = detect_cold_wars(parsed)
-    text_analysis = compute_text_analysis(parsed)
+    text_analysis, interest_context = compute_text_analysis(parsed)
     transfer_analysis = compute_transfer_analysis(parsed)
     first_conversation = extract_first_conversation(parsed)
+
+    # Extract internal data for AI sampling, then clean up
+    word_idf = text_analysis.pop("_word_idf", None)
+    msg_words = text_analysis.pop("_msg_words", None)
 
     ai_result = None
     if not skip_ai:
@@ -93,23 +97,23 @@ async def analyze(
                 "coldWars": cold_wars,
                 "textAnalysis": text_analysis,
             }
-            ai_result = await analyze_with_ai(parsed["messages"], persons, ai_stats)
+            ai_result = await analyze_with_ai(
+                parsed["messages"], persons, ai_stats,
+                interest_context=interest_context,
+                msg_words=msg_words, word_idf=word_idf,
+            )
         except Exception:
             logger.exception("AI analysis failed")
             ai_result = None
 
-    del parsed
+    del parsed, word_idf, msg_words
     gc.collect()
 
-    # Merge jieba + AI shared interests
+    # Use AI shared interests directly
     if ai_result:
-        try:
-            ai_si = ai_result.pop("sharedInterests", None)
-            text_analysis["sharedInterests"] = merge_shared_interests(
-                text_analysis.get("sharedInterests", []), ai_si
-            )
-        except Exception:
-            logger.exception("Failed to merge shared interests, using jieba only")
+        ai_si = ai_result.pop("sharedInterests", None)
+        if ai_si:
+            text_analysis["sharedInterests"] = ai_si
 
     result = {
         "persons": persons,
@@ -183,9 +187,13 @@ async def analyze_stream(
         await asyncio.sleep(0)
 
         # Run jieba segmentation in a thread to avoid blocking event loop
-        text_analysis = await asyncio.get_running_loop().run_in_executor(
+        text_analysis, interest_context = await asyncio.get_running_loop().run_in_executor(
             None, compute_text_analysis, parsed
         )
+
+        # Extract internal data for AI sampling, then clean up
+        word_idf = text_analysis.pop("_word_idf", None)
+        msg_words = text_analysis.pop("_msg_words", None)
 
         transfer_analysis = compute_transfer_analysis(parsed)
         first_conversation = extract_first_conversation(parsed)
@@ -218,9 +226,12 @@ async def analyze_stream(
                     "coldWars": cold_wars,
                     "textAnalysis": text_analysis,
                 }
-                # Extract messages before clearing parsed
                 messages = parsed["messages"]
-                ai_result = await analyze_with_ai(messages, persons, ai_stats)
+                ai_result = await analyze_with_ai(
+                    messages, persons, ai_stats,
+                    interest_context=interest_context,
+                    msg_words=msg_words, word_idf=word_idf,
+                )
                 del messages
             except AIRateLimitError:
                 logger.warning("AI rate limited, skipping AI analysis")
@@ -230,18 +241,14 @@ async def analyze_stream(
                 ai_result = None
 
         # Release parsed messages from memory
-        del parsed
+        del parsed, word_idf, msg_words
         gc.collect()
 
-        # Merge jieba + AI shared interests
+        # Use AI shared interests directly
         if ai_result:
-            try:
-                ai_si = ai_result.pop("sharedInterests", None)
-                result["textAnalysis"]["sharedInterests"] = merge_shared_interests(
-                    result["textAnalysis"].get("sharedInterests", []), ai_si
-                )
-            except Exception:
-                logger.exception("Failed to merge shared interests, using jieba only")
+            ai_si = ai_result.pop("sharedInterests", None)
+            if ai_si:
+                result["textAnalysis"]["sharedInterests"] = ai_si
             result["aiAnalysis"] = ai_result
 
         final_event: dict = {"progress": 100, "stage": "完成！", "result": result}

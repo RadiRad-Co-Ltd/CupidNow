@@ -10,7 +10,7 @@ def _parsed():
 
 
 def test_word_cloud_per_person():
-    result = compute_text_analysis(_parsed())
+    result, _ = compute_text_analysis(_parsed())
     wc = result["wordCloud"]
     persons = _parsed()["persons"]
     for p in persons:
@@ -20,7 +20,7 @@ def test_word_cloud_per_person():
 
 
 def test_word_cloud_has_words():
-    result = compute_text_analysis(_parsed())
+    result, _ = compute_text_analysis(_parsed())
     wc = result["wordCloud"]
     # At least one person should have some words
     has_words = any(len(wc[p]) > 0 for p in wc)
@@ -28,6 +28,6 @@ def test_word_cloud_has_words():
 
 
 def test_unique_phrases():
-    result = compute_text_analysis(_parsed())
+    result, _ = compute_text_analysis(_parsed())
     up = result["uniquePhrases"]
     assert isinstance(up, list)
