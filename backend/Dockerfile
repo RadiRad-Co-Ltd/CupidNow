@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl && \
     rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml .
-RUN mkdir -p app data && touch app/__init__.py && \
+RUN mkdir -p app && touch app/__init__.py && \
     pip install --no-cache-dir . && rm -rf app
 
 # 下載繁中大辭典 (584K 詞條)
