@@ -1,8 +1,7 @@
 import re
 from collections import Counter
 from app.services.parser import Message
-
-import jieba
+from app.services import segmenter
 
 # Comprehensive Traditional Chinese stop words for chat analysis
 STOP_WORDS = {
@@ -260,26 +259,39 @@ def compute_text_analysis(parsed: dict) -> dict:
     messages: list[Message] = parsed["messages"]
     persons: list[str] = parsed["persons"]
 
+    # 收集每人的文字訊息
+    texts_by_person: dict[str, list[str]] = {p: [] for p in persons}
+    for m in messages:
+        if m.msg_type == "text":
+            texts_by_person[m.sender].append(_URL_RE.sub("", m.content))
+
+    # 批次分詞（CKIP or jieba fallback）
+    all_texts: list[str] = []
+    person_ranges: list[tuple[str, int, int]] = []  # (person, start, end)
+    for p in persons:
+        start = len(all_texts)
+        all_texts.extend(texts_by_person[p])
+        person_ranges.append((p, start, len(all_texts)))
+
+    all_words = segmenter.batch_cut(all_texts)
+
+    # 統計
     word_cloud = {}
     all_words_by_person: dict[str, Counter] = {}
 
-    for p in persons:
+    for person, start, end in person_ranges:
         counter: Counter = Counter()
-        for m in messages:
-            if m.sender != p or m.msg_type != "text":
-                continue
-            text = _URL_RE.sub("", m.content)
-            words = jieba.lcut(text)
+        for word_list in all_words[start:end]:
             filtered = [
-                w for w in words
+                w for w in word_list
                 if len(w) >= 2
                 and w not in STOP_WORDS
                 and not re.match(r"^[\d\W]+$", w)
                 and not re.match(r"^(.)\1+$", w)
             ]
             counter.update(filtered)
-        all_words_by_person[p] = counter
-        word_cloud[p] = [
+        all_words_by_person[person] = counter
+        word_cloud[person] = [
             {"word": w, "count": c}
             for w, c in counter.most_common(80)
         ]

@@ -28,8 +28,8 @@ def _is_meaningful(content: str) -> bool:
     if _NOISE_RE.match(text):
         return False
 
-    import jieba
-    words = jieba.lcut(text)
+    from app.services.segmenter import cut
+    words = cut(text)
     substantive = [
         w for w in words
         if len(w) >= 2
