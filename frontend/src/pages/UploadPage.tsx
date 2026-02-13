@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Heart, Sparkles, ShieldCheck, Trash2, EyeOff, UserX } from "lucide-react";
 import { FileDropzone } from "../components/FileDropzone";
@@ -22,19 +22,38 @@ export function UploadPage({ onResult }: Props) {
   const [progress, setProgress] = useState(0);
   const [stage, setStage] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [serverReady, setServerReady] = useState(false);
   const navigate = useNavigate();
+
+  // Warm up backend on page load so it's ready when user uploads
+  useEffect(() => {
+    fetch(`${API_BASE}/api/health`)
+      .then(() => setServerReady(true))
+      .catch(() => {});
+  }, []);
 
   const handleFile = async (file: File) => {
     setLoading(true);
     setError(null);
     setProgress(2);
-    setStage("上傳檔案中...");
+    setStage(serverReady ? "上傳檔案中..." : "正在喚醒伺服器，首次需要等一下...");
 
     try {
       if (file.size > 10 * 1024 * 1024) {
         setError("檔案太大，最大限制 10MB");
         setLoading(false);
         return;
+      }
+
+      // If server hasn't responded to warmup yet, wait for it
+      if (!serverReady) {
+        try {
+          await fetch(`${API_BASE}/api/health`);
+        } catch {
+          // proceed anyway
+        }
+        setStage("上傳檔案中...");
+        setProgress(3);
       }
 
       const formData = new FormData();
