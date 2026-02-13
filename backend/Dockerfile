@@ -9,7 +9,7 @@ RUN mkdir -p app && touch app/__init__.py && \
     pip install --no-cache-dir . && rm -rf app
 
 # 下載繁中大辭典 (584K 詞條)
-RUN curl -sL https://raw.githubusercontent.com/fxsjy/jieba/master/extra_dict/dict.txt.big \
+RUN mkdir -p data && curl -sL https://raw.githubusercontent.com/fxsjy/jieba/master/extra_dict/dict.txt.big \
     -o data/dict.txt.big
 
 RUN adduser --disabled-password --gecos '' appuser
