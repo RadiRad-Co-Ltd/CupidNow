@@ -265,7 +265,7 @@ def compute_text_analysis(parsed: dict) -> dict:
         if m.msg_type == "text":
             texts_by_person[m.sender].append(_URL_RE.sub("", m.content))
 
-    # 批次分詞（CKIP or jieba fallback）
+    # 批次分詞（CKIP）
     all_texts: list[str] = []
     person_ranges: list[tuple[str, int, int]] = []  # (person, start, end)
     for p in persons:

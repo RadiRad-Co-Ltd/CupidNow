@@ -2,17 +2,23 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Copy project metadata and install dependencies first (cache layer)
+# Install CPU-only PyTorch first (smaller than default CUDA build)
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
+# Copy project metadata and install dependencies (cache layer)
 COPY pyproject.toml .
-# Create minimal package structure so pip install . can resolve deps
 RUN mkdir -p app && touch app/__init__.py && \
     pip install --no-cache-dir . && \
     rm -rf app
 
+# Pre-download CKIP albert-tiny model so it's baked into the image
+RUN python -c "from ckip_transformers.nlp import CkipWordSegmenter; CkipWordSegmenter(model='albert-tiny', device=-1)"
+
 RUN adduser --disabled-password --gecos '' appuser
 
-# Copy actual application code
+# Copy application code and data
 COPY app/ app/
+COPY data/ data/
 
 USER appuser
 

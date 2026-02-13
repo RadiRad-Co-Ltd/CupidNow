@@ -6,7 +6,7 @@ import os
 logger = logging.getLogger(__name__)
 
 # Lazy imports to reduce baseline memory
-# jieba, snownlp, groq, google-genai are imported on first use
+# snownlp, groq, google-genai are imported on first use
 from app.services.parser import Message
 from app.services.text_analysis import STOP_WORDS
 
@@ -17,10 +17,11 @@ _NOISE_RE = re.compile(r"^[\d\W\s]+$|^(.)\1+$")
 
 
 def _is_meaningful(content: str) -> bool:
-    """Use jieba + STOP_WORDS to check if a message has real content.
+    """Check if a message has real content worth sending to AI.
 
-    Segment the message, strip stop words / punctuation / numbers.
-    If nothing remains → trivial message, not worth sending to AI.
+    Uses text length and word-level filtering. Messages with ≥3 Chinese
+    characters that aren't pure noise are considered meaningful, even if
+    individual words are common (e.g. "我好想你喔" is meaningful).
     """
     text = content.strip()
     if len(text) <= 1:
@@ -28,6 +29,12 @@ def _is_meaningful(content: str) -> bool:
     if _NOISE_RE.match(text):
         return False
 
+    # Messages with enough Chinese characters are likely meaningful
+    cjk_chars = sum(1 for c in text if '\u4e00' <= c <= '\u9fff')
+    if cjk_chars >= 3:
+        return True
+
+    # For short/mixed messages, check for substantive words
     from app.services.segmenter import cut
     words = cut(text)
     substantive = [
@@ -82,7 +89,7 @@ def sample_messages(
     if not messages:
         return []
 
-    # Phase 1: jieba + STOP_WORDS — remove noise
+    # Phase 1: CKIP + STOP_WORDS — remove noise
     meaningful = [
         m for m in messages
         if m.msg_type == "text" and _is_meaningful(m.content)
