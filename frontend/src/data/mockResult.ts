@@ -72,6 +72,7 @@ export const mockResult: AnalysisResult = {
       whoSaysGoodmorningFirst: { "阿明": 65, "小美": 35 },
       avgLastChatTime: 1.383,
       avgBedtimeChatMinutes: 42,
+      bedtimeChatCount: 68,
     },
   },
   coldWars: [

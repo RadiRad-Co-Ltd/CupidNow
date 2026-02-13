@@ -40,6 +40,7 @@ export interface TimePatterns {
     whoSaysGoodmorningFirst: Record<string, number>;
     avgLastChatTime: number;
     avgBedtimeChatMinutes: number;
+    bedtimeChatCount: number;
   };
 }
 

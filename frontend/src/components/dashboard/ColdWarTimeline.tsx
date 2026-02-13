@@ -10,9 +10,55 @@ const EVENT_STYLES = [
   { bg: "bg-[#F5A62310]", tagColor: "#F5A623", tagLabel: "低潮期", icon: TrendingDown },
 ] as const;
 
+function buildTimelineGradient(
+  coldWars: AnalysisResult["coldWars"],
+  dateRange: AnalysisResult["basicStats"]["dateRange"],
+): string {
+  const start = new Date(dateRange.start).getTime();
+  const end = new Date(dateRange.end).getTime();
+  const span = end - start;
+  if (span <= 0) return "linear-gradient(90deg, #38B2AC 0%, #38B2AC 100%)";
+
+  const toPercent = (dateStr: string) =>
+    Math.round(((new Date(dateStr).getTime() - start) / span) * 100);
+
+  // Build gradient stops: teal = healthy, red = cold war, orange = low-intensity
+  const stops: string[] = [];
+  // Sort events by start date
+  const sorted = [...coldWars].sort(
+    (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
+  );
+
+  let cursor = 0; // current position in %
+  for (const event of sorted) {
+    const evStart = toPercent(event.startDate);
+    const evEnd = toPercent(event.endDate);
+    const color = event.messageDrop >= 70 ? "#E8457E" : "#F5A623";
+
+    // Healthy zone before this event
+    if (evStart > cursor) {
+      stops.push(`#38B2AC ${cursor}%`);
+      stops.push(`#38B2AC ${Math.max(evStart - 2, cursor)}%`);
+    }
+    // Event zone
+    stops.push(`${color} ${evStart}%`);
+    stops.push(`${color} ${evEnd}%`);
+    cursor = evEnd;
+  }
+
+  // Healthy zone after last event
+  if (cursor < 100) {
+    stops.push(`#38B2AC ${Math.min(cursor + 2, 100)}%`);
+    stops.push(`#38B2AC 100%`);
+  }
+
+  return `linear-gradient(90deg, ${stops.join(", ")})`;
+}
+
 export function ColdWarTimeline({ result }: Props) {
   const { coldWars } = result;
   const totalDays = result.basicStats.dateRange.totalDays;
+  const timelineGradient = buildTimelineGradient(coldWars, result.basicStats.dateRange);
 
   // Build all cards: cold war events + summary
   const eventCards = coldWars.map((event, idx) => {
@@ -84,10 +130,7 @@ export function ColdWarTimeline({ result }: Props) {
         >
           <div
             className="h-full rounded-full"
-            style={{
-              background:
-                "linear-gradient(90deg, #38B2AC60 0%, #38B2AC 15%, #E8457E 35%, #9F7AEA30 40%, #38B2AC 55%, #38B2AC 70%, #F5A62380 78%, #38B2AC 90%, #38B2AC60 100%)",
-            }}
+            style={{ background: timelineGradient }}
           />
         </div>
 

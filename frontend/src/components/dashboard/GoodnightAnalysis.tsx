@@ -35,6 +35,7 @@ function getTopPersonWithPercent(record: Record<string, number>): string {
 export function GoodnightAnalysis({ result }: Props) {
   const { goodnightAnalysis } = result.timePatterns;
   const chatMinutes = goodnightAnalysis.avgBedtimeChatMinutes ?? 0;
+  const chatCount = goodnightAnalysis.bedtimeChatCount ?? 0;
 
   const cards: NightCard[] = [
     {
@@ -59,7 +60,7 @@ export function GoodnightAnalysis({ result }: Props) {
       icon: Timer,
       iconColor: "#38B2AC",
       value: `${chatMinutes} 分鐘`,
-      label: "平均睡前聊天時長",
+      label: `平均睡前聊天時長（${chatCount} 次）`,
     },
   ];
 

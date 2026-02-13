@@ -98,4 +98,5 @@ def _build_goodnight(messages: list[Message], persons: list[str]) -> dict:
         "whoSaysGoodmorningFirst": dict(gm_first),
         "avgLastChatTime": avg_last,
         "avgBedtimeChatMinutes": avg_bedtime_chat,
+        "bedtimeChatCount": len(bedtime_durations),
     }

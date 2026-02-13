@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Heart, Sparkles, ShieldCheck, Trash2, EyeOff, UserX } from "lucide-react";
 import { FileDropzone } from "../components/FileDropzone";
@@ -27,13 +27,30 @@ const PRIVACY_BADGES = [
 export function UploadPage({ onResult }: Props) {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [textIdx, setTextIdx] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const timerRef = useRef<ReturnType<typeof setInterval>>();
+
+  // Smooth progress animation + rotating text while loading
+  useEffect(() => {
+    if (!loading) return;
+    // Simulate smooth progress: ramp up to ~85% over time, then wait for real completion
+    let fakeProgress = 5;
+    timerRef.current = setInterval(() => {
+      fakeProgress += Math.random() * 3 + 0.5;
+      if (fakeProgress > 85) fakeProgress = 85;
+      setProgress((prev) => Math.max(prev, Math.round(fakeProgress)));
+      setTextIdx((prev) => (prev + 1) % LOADING_TEXTS.length);
+    }, 2500);
+    return () => clearInterval(timerRef.current);
+  }, [loading]);
 
   const handleFile = async (file: File) => {
     setLoading(true);
     setError(null);
-    setProgress(0);
+    setProgress(5);
+    setTextIdx(0);
 
     try {
       if (file.size > 10 * 1024 * 1024) {
@@ -41,8 +58,6 @@ export function UploadPage({ onResult }: Props) {
         setLoading(false);
         return;
       }
-
-      setProgress(20);
 
       const formData = new FormData();
       formData.append("file", file);
@@ -52,7 +67,7 @@ export function UploadPage({ onResult }: Props) {
         body: formData,
       });
 
-      setProgress(90);
+      setProgress(95);
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({ detail: "分析失敗" }));
         throw new Error(err.detail || "分析失敗");
@@ -60,11 +75,13 @@ export function UploadPage({ onResult }: Props) {
 
       const result: AnalysisResult = await resp.json();
       setProgress(100);
+      await new Promise((r) => setTimeout(r, 400));
       onResult(result);
       navigate("/dashboard");
     } catch (e) {
       setError(e instanceof Error ? e.message : "發生未知錯誤");
     } finally {
+      clearInterval(timerRef.current);
       setLoading(false);
     }
   };
@@ -93,16 +110,49 @@ export function UploadPage({ onResult }: Props) {
         </p>
 
         {loading ? (
-          <div className="flex w-full max-w-md flex-col items-center gap-4 rounded-3xl border border-border-light bg-white p-12">
-            <div className="h-2 w-full overflow-hidden rounded-full bg-rose-soft">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-rose-primary to-purple-accent transition-all duration-500"
-                style={{ width: `${progress}%` }}
-              />
+          <div className="flex w-full max-w-md flex-col items-center gap-6 rounded-3xl border border-border-light bg-white p-10 sm:p-12">
+            {/* Animated heart */}
+            <div className="relative flex items-center justify-center">
+              <div className="absolute h-16 w-16 animate-ping rounded-full bg-rose-primary/20" />
+              <Heart className="h-10 w-10 text-rose-primary animate-pulse" fill="#E8457E" />
             </div>
-            <p className="animate-pulse text-sm text-text-secondary">
-              {LOADING_TEXTS[Math.floor((progress / 100) * LOADING_TEXTS.length) % LOADING_TEXTS.length]}
+
+            {/* Progress bar */}
+            <div className="w-full">
+              <div className="h-2.5 w-full overflow-hidden rounded-full bg-rose-soft">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-rose-primary via-purple-accent to-rose-primary transition-all duration-700 ease-out"
+                  style={{
+                    width: `${progress}%`,
+                    backgroundSize: "200% 100%",
+                    animation: "shimmer 2s linear infinite",
+                  }}
+                />
+              </div>
+              <p className="mt-2 text-right font-body text-[12px] text-text-muted">
+                {progress}%
+              </p>
+            </div>
+
+            {/* Rotating text */}
+            <p
+              key={textIdx}
+              className="text-center font-body text-[14px] text-text-secondary animate-fade-in"
+            >
+              {LOADING_TEXTS[textIdx]}
             </p>
+
+            <style>{`
+              @keyframes shimmer {
+                0% { background-position: 200% 0; }
+                100% { background-position: -200% 0; }
+              }
+              @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(4px); }
+                to { opacity: 1; transform: translateY(0); }
+              }
+              .animate-fade-in { animation: fadeIn 0.4s ease-out; }
+            `}</style>
           </div>
         ) : (
           <FileDropzone onFileSelected={handleFile} />
