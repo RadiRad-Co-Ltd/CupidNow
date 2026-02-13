@@ -5,6 +5,7 @@ import type { AnalysisResult } from "../types/analysis";
 import { LoveScoreHero } from "../components/dashboard/LoveScoreHero";
 import { BasicStatsCards } from "../components/dashboard/BasicStatsCards";
 import { PersonBalance } from "../components/dashboard/PersonBalance";
+import { TransferAnalysis } from "../components/dashboard/TransferAnalysis";
 import { ReplyBehavior } from "../components/dashboard/ReplyBehavior";
 import { TimeHeatmap } from "../components/dashboard/TimeHeatmap";
 import { TrendChart } from "../components/dashboard/TrendChart";
@@ -14,6 +15,7 @@ import { SentimentAnalysis } from "../components/dashboard/SentimentAnalysis";
 import { WordCloud } from "../components/dashboard/WordCloud";
 import { GoldenQuotes } from "../components/dashboard/GoldenQuotes";
 import { SharedInterests } from "../components/dashboard/SharedInterests";
+import { FirstConversation } from "../components/dashboard/FirstConversation";
 import { ShareCTA } from "../components/dashboard/ShareCTA";
 
 interface Props {
@@ -92,9 +94,11 @@ export function DashboardPage({ result }: Props) {
         <WordCloud result={result} />
         <GoldenQuotes result={result} />
         <SharedInterests result={result} />
+        <TransferAnalysis result={result} />
       </main>
 
       <ShareCTA result={result} reportRef={reportRef} onRegister={registerShareFn} />
+      <FirstConversation result={result} />
 
       {/* Dashboard Footer */}
       <footer

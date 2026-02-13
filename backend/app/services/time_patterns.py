@@ -4,8 +4,10 @@ from datetime import datetime
 from app.services.parser import Message
 
 
-GOODNIGHT_RE = re.compile(r"(晚安|good\s*night|gn|睡了|想睡)", re.IGNORECASE)
-GOODMORNING_RE = re.compile(r"(早安|早～|早啊|good\s*morning|gm|起床)", re.IGNORECASE)
+# Use word boundaries (\b) to avoid matching inside URLs or other words
+GOODNIGHT_RE = re.compile(r"(晚安|good\s*night\b|睡了|想睡|睡覺)", re.IGNORECASE)
+GOODMORNING_RE = re.compile(r"(早安|早～|早啊|good\s*morning\b|起床了)", re.IGNORECASE)
+_URL_RE = re.compile(r"https?://\S+", re.IGNORECASE)
 
 
 def compute_time_patterns(parsed: dict) -> dict:
@@ -46,6 +48,12 @@ def _build_trend(messages: list[Message], persons: list[str]) -> list[dict]:
     return result
 
 
+def _is_greeting(content: str, pattern: re.Pattern) -> bool:
+    """Check if message matches greeting pattern, ignoring URLs."""
+    text = _URL_RE.sub("", content)
+    return bool(pattern.search(text))
+
+
 def _build_goodnight(messages: list[Message], persons: list[str]) -> dict:
     gn_first: dict[str, int] = defaultdict(int)
     gm_first: dict[str, int] = defaultdict(int)
@@ -58,28 +66,31 @@ def _build_goodnight(messages: list[Message], persons: list[str]) -> dict:
         by_date[str(m.timestamp.date())].append(m)
 
     for date_str, day_msgs in by_date.items():
-        # Find first goodnight
+        # Find first goodnight (only count after 21:00)
         for m in day_msgs:
-            if m.msg_type == "text" and GOODNIGHT_RE.search(m.content):
+            if (m.msg_type == "text"
+                    and m.timestamp.hour >= 21
+                    and _is_greeting(m.content, GOODNIGHT_RE)):
                 gn_first[m.sender] += 1
                 break
 
-        # Find first good morning
+        # Find first good morning (only count between 5:00-11:59)
         for m in day_msgs:
-            if m.msg_type == "text" and GOODMORNING_RE.search(m.content):
+            if (m.msg_type == "text"
+                    and 5 <= m.timestamp.hour < 12
+                    and _is_greeting(m.content, GOODMORNING_RE)):
                 gm_first[m.sender] += 1
                 break
 
-        # Last message time of day
-        if day_msgs:
-            last = day_msgs[-1].timestamp
+        # Last message time of day (only count days with messages after 20:00)
+        night_last = [m for m in day_msgs if m.timestamp.hour >= 20]
+        if night_last:
+            last = night_last[-1].timestamp
             last_chat_hours.append(last.hour + last.minute / 60)
 
-        # Bedtime chat duration: last continuous conversation block after 23:00
-        # Walk backwards from last message, find the last gap > 10 min
-        night_msgs = [m for m in day_msgs if m.timestamp.hour >= 23]
+        # Bedtime chat duration: last continuous conversation block after 22:00
+        night_msgs = [m for m in day_msgs if m.timestamp.hour >= 22]
         if len(night_msgs) >= 2:
-            # Find where the last continuous block starts (gap > 10 min = new block)
             block_start = night_msgs[-1].timestamp
             for i in range(len(night_msgs) - 1, 0, -1):
                 gap = (night_msgs[i].timestamp - night_msgs[i - 1].timestamp).total_seconds()

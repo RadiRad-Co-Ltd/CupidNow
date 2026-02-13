@@ -103,6 +103,32 @@ export function UploadPage({ onResult }: Props) {
       let finalResult: AnalysisResult | null = null;
       let aiWarning: string | null = null;
 
+      let sseError: string | null = null;
+
+      const parseSSE = (part: string) => {
+        const dataLines = part
+          .split("\n")
+          .filter((l) => l.startsWith("data: "))
+          .map((l) => l.slice(6));
+        if (dataLines.length === 0) return;
+        const payload = dataLines.join("");
+        let evt;
+        try {
+          evt = JSON.parse(payload);
+        } catch (e) {
+          console.warn("[SSE] JSON parse skip:", (e as Error).message, payload.slice(0, 100));
+          return;
+        }
+        if (evt.error) {
+          sseError = evt.error;
+          return;
+        }
+        if (evt.progress != null) setProgress(evt.progress);
+        if (evt.stage) setStage(evt.stage);
+        if (evt.warning) aiWarning = evt.warning;
+        if (evt.result) finalResult = evt.result as AnalysisResult;
+      };
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -112,29 +138,14 @@ export function UploadPage({ onResult }: Props) {
         // SSE events are separated by double newlines
         const parts = buffer.split("\n\n");
         buffer = parts.pop() ?? "";
-
-        for (const part of parts) {
-          // Collect all data: lines in this event block
-          const dataLines = part
-            .split("\n")
-            .filter((l) => l.startsWith("data: "))
-            .map((l) => l.slice(6));
-          if (dataLines.length === 0) continue;
-          const payload = dataLines.join("");
-          try {
-            const evt = JSON.parse(payload);
-            if (evt.error) throw new Error(evt.error);
-            if (evt.progress != null) setProgress(evt.progress);
-            if (evt.stage) setStage(evt.stage);
-            if (evt.warning) aiWarning = evt.warning;
-            if (evt.result) finalResult = evt.result as AnalysisResult;
-          } catch {
-            // Incomplete or malformed event — skip
-          }
-        }
+        for (const part of parts) parseSSE(part);
       }
 
-      if (!finalResult) throw new Error("未收到分析結果");
+      // Process any remaining data left in buffer after stream ends
+      if (buffer.trim()) parseSSE(buffer);
+
+      if (sseError) throw new Error(sseError);
+      if (!finalResult) throw new Error("未收到分析結果，請重試");
 
       setProgress(100);
       setStage(aiWarning ? "完成！（AI 分析暫時不可用）" : "完成！");
@@ -142,6 +153,7 @@ export function UploadPage({ onResult }: Props) {
       onResult(finalResult);
       navigate("/dashboard");
     } catch (e) {
+      console.error("[CupidNow] Upload error:", e);
       setError(e instanceof Error ? e.message : "發生未知錯誤");
     } finally {
       setLoading(false);

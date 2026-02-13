@@ -10,11 +10,13 @@ from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
 
 from app.services.cold_war import detect_cold_wars
+from app.services.first_conversation import extract_first_conversation
 from app.services.parser import parse_line_chat
 from app.services.reply_analysis import compute_reply_behavior
 from app.services.stats import compute_basic_stats
 from app.services.text_analysis import compute_text_analysis, merge_shared_interests
 from app.services.time_patterns import compute_time_patterns
+from app.services.transfer_analysis import compute_transfer_analysis
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +80,8 @@ async def analyze(
     time_patterns = compute_time_patterns(parsed)
     cold_wars = detect_cold_wars(parsed)
     text_analysis = compute_text_analysis(parsed)
+    transfer_analysis = compute_transfer_analysis(parsed)
+    first_conversation = extract_first_conversation(parsed)
 
     ai_result = None
     if not skip_ai:
@@ -99,10 +103,13 @@ async def analyze(
 
     # Merge jieba + AI shared interests
     if ai_result:
-        ai_si = ai_result.pop("sharedInterests", None)
-        text_analysis["sharedInterests"] = merge_shared_interests(
-            text_analysis.get("sharedInterests", []), ai_si
-        )
+        try:
+            ai_si = ai_result.pop("sharedInterests", None)
+            text_analysis["sharedInterests"] = merge_shared_interests(
+                text_analysis.get("sharedInterests", []), ai_si
+            )
+        except Exception:
+            logger.exception("Failed to merge shared interests, using jieba only")
 
     result = {
         "persons": persons,
@@ -112,6 +119,12 @@ async def analyze(
         "coldWars": cold_wars,
         "textAnalysis": text_analysis,
     }
+
+    if transfer_analysis:
+        result["transferAnalysis"] = transfer_analysis
+
+    if first_conversation:
+        result["firstConversation"] = first_conversation
 
     if ai_result:
         result["aiAnalysis"] = ai_result
@@ -170,6 +183,8 @@ async def analyze_stream(
         await asyncio.sleep(0)
 
         text_analysis = compute_text_analysis(parsed)
+        transfer_analysis = compute_transfer_analysis(parsed)
+        first_conversation = extract_first_conversation(parsed)
 
         result = {
             "persons": persons,
@@ -179,6 +194,12 @@ async def analyze_stream(
             "coldWars": cold_wars,
             "textAnalysis": text_analysis,
         }
+
+        if transfer_analysis:
+            result["transferAnalysis"] = transfer_analysis
+
+        if first_conversation:
+            result["firstConversation"] = first_conversation
 
         ai_result = None
         ai_warning = None
@@ -210,10 +231,13 @@ async def analyze_stream(
 
         # Merge jieba + AI shared interests
         if ai_result:
-            ai_si = ai_result.pop("sharedInterests", None)
-            result["textAnalysis"]["sharedInterests"] = merge_shared_interests(
-                result["textAnalysis"].get("sharedInterests", []), ai_si
-            )
+            try:
+                ai_si = ai_result.pop("sharedInterests", None)
+                result["textAnalysis"]["sharedInterests"] = merge_shared_interests(
+                    result["textAnalysis"].get("sharedInterests", []), ai_si
+                )
+            except Exception:
+                logger.exception("Failed to merge shared interests, using jieba only")
             result["aiAnalysis"] = ai_result
 
         final_event: dict = {"progress": 100, "stage": "完成！", "result": result}

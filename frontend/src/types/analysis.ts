@@ -1,3 +1,16 @@
+export interface FirstConversationMessage {
+  timestamp: string;
+  sender: string;
+  content: string;
+  msgType: string;
+}
+
+export interface FirstConversation {
+  messages: FirstConversationMessage[];
+  startDate: string;
+  isFallback: boolean;
+}
+
 export interface AnalysisResult {
   persons: string[];
   basicStats: BasicStats;
@@ -5,6 +18,8 @@ export interface AnalysisResult {
   timePatterns: TimePatterns;
   coldWars: ColdWarEvent[];
   textAnalysis: TextAnalysis;
+  transferAnalysis?: TransferAnalysis;
+  firstConversation?: FirstConversation;
   aiAnalysis?: AIAnalysis;
 }
 
@@ -65,7 +80,7 @@ export interface AIAnalysis {
     mostTouching: Quote[];
   };
   insight: string;
-  advice?: string[];
+  advice?: AdviceItem[] | string[];
 }
 
 export interface SharedInterest {
@@ -76,6 +91,21 @@ export interface SharedInterest {
 export interface SharedInterestItem {
   name: string;
   count?: number;
+}
+
+export interface TransferAnalysis {
+  totalAmount: number;
+  totalCount: number;
+  perPerson: Record<string, {
+    sent: number;
+    count: number;
+  }>;
+}
+
+export interface AdviceItem {
+  category: string;
+  target: string;
+  content: string;
 }
 
 interface Quote {

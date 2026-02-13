@@ -1,5 +1,5 @@
 from pathlib import Path
-from app.services.parser import parse_line_chat, Message, CallRecord
+from app.services.parser import parse_line_chat, Message, CallRecord, TransferRecord
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sample_chat.txt"
 
@@ -9,6 +9,7 @@ def test_parse_returns_messages_and_calls():
     result = parse_line_chat(text)
     assert "messages" in result
     assert "calls" in result
+    assert "transfers" in result
     assert "persons" in result
     assert len(result["persons"]) == 2
 
@@ -16,9 +17,9 @@ def test_parse_returns_messages_and_calls():
 def test_parse_message_count():
     text = FIXTURE.read_text(encoding="utf-8")
     result = parse_line_chat(text)
-    # 小美: 早安～, 對呀！\n要不要出去走走, [貼圖], 今天好開心😊, 晚安～, 早～\n今天好冷喔, 下班了！, 隨便都好 = 8
+    # 小美: 早安～, 對呀！\n要不要出去走走, [貼圖], 今天好開心😊, 晚安～, 早～\n今天好冷喔, 下班了！, 隨便都好, 轉帳給阿明, 收到轉帳 = 10
     # 阿明: 早安！今天天氣好好, [照片], 我也是！晚安, 早安！, 我也是\n等等要吃什麼 = 5
-    assert len(result["messages"]) == 13
+    assert len(result["messages"]) == 15
 
 
 def test_parse_multiline_message():
@@ -63,3 +64,38 @@ def test_parse_identifies_persons():
     text = FIXTURE.read_text(encoding="utf-8")
     result = parse_line_chat(text)
     assert set(result["persons"]) == {"小美", "阿明"}
+
+
+def test_parse_transfer_records():
+    text = FIXTURE.read_text(encoding="utf-8")
+    result = parse_line_chat(text)
+    assert "transfers" in result
+    assert len(result["transfers"]) == 2
+    # "已將NT$ 120轉帳給阿明。" — 小美 transferred 120 to 阿明
+    t0 = result["transfers"][0]
+    assert t0.sender == "小美"
+    assert t0.receiver == "阿明"
+    assert t0.amount == 120
+    # "您已收到NT$ 170。（來自：小美）" — 小美 transferred 170 to 阿明
+    t1 = result["transfers"][1]
+    assert t1.sender == "小美"
+    assert t1.receiver == "阿明"
+    assert t1.amount == 170
+
+
+def test_transfer_messages_have_transfer_type():
+    text = FIXTURE.read_text(encoding="utf-8")
+    result = parse_line_chat(text)
+    transfer_msgs = [m for m in result["messages"] if m.msg_type == "transfer"]
+    assert len(transfer_msgs) == 2
+
+
+def test_transfer_messages_excluded_from_text():
+    """Transfer messages should not be counted as text type."""
+    text = FIXTURE.read_text(encoding="utf-8")
+    result = parse_line_chat(text)
+    text_msgs = [m for m in result["messages"] if m.msg_type == "text"]
+    # None of the text messages should contain transfer keywords
+    for m in text_msgs:
+        assert "轉帳給" not in m.content
+        assert "您已收到NT$" not in m.content

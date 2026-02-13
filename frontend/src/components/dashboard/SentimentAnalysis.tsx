@@ -124,23 +124,34 @@ export function SentimentAnalysis({ result }: Props) {
             </h3>
           </div>
           <div className="flex flex-col gap-3">
-            {advice.map((tip, idx) => (
-              <div
-                key={idx}
-                className="flex items-start gap-3 rounded-[12px] p-3.5"
-                style={{ backgroundColor: idx < 2 ? "#FFF0F3" : "#F3EDF8" }}
-              >
-                <span
-                  className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full font-body text-[11px] font-bold text-white"
-                  style={{ backgroundColor: idx < 2 ? "#E8457E" : "#9F7AEA" }}
+            {advice.map((tip, idx) => {
+              const isObj = typeof tip === "object" && tip !== null;
+              const category = isObj ? (tip as { category?: string }).category : undefined;
+              const target = isObj ? (tip as { target?: string }).target : undefined;
+              const content = isObj ? (tip as { content?: string }).content ?? "" : String(tip);
+
+              return (
+                <div
+                  key={idx}
+                  className="flex items-start gap-3 rounded-[12px] p-3.5"
+                  style={{ backgroundColor: idx % 2 === 0 ? "#FFF0F3" : "#F3EDF8" }}
                 >
-                  {idx + 1}
-                </span>
-                <p className="font-body text-[13px] leading-[1.6] text-text-primary">
-                  {tip}
-                </p>
-              </div>
-            ))}
+                  <span className="mt-0.5 shrink-0 text-[15px]">
+                    {category ? category.slice(0, 2) : "💡"}
+                  </span>
+                  <div className="flex flex-col gap-0.5">
+                    {target && (
+                      <span className="font-body text-[11px] font-semibold text-text-muted">
+                        {target}
+                      </span>
+                    )}
+                    <p className="font-body text-[13px] leading-[1.6] text-text-primary">
+                      {content}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
