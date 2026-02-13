@@ -11,6 +11,7 @@ interface QuoteCategory {
   label: string;
   bgClass: string;
   textColor: string;
+  emptyText: string;
 }
 
 const CATEGORIES: QuoteCategory[] = [
@@ -20,6 +21,7 @@ const CATEGORIES: QuoteCategory[] = [
     label: "最甜蜜",
     bgClass: "bg-rose-soft",
     textColor: "text-rose-primary",
+    emptyText: "你們的甜蜜都藏在心裡，不在文字裡～下次試著多打幾個字吧！",
   },
   {
     key: "funniest",
@@ -27,6 +29,7 @@ const CATEGORIES: QuoteCategory[] = [
     label: "最好笑",
     bgClass: "bg-[#F5A62315]",
     textColor: "text-gold-accent",
+    emptyText: "太正經了吧！聊了這麼久連一句好笑的都沒有？你們是在寫論文嗎？",
   },
   {
     key: "mostTouching",
@@ -34,6 +37,7 @@ const CATEGORIES: QuoteCategory[] = [
     label: "最心動",
     bgClass: "bg-purple-soft",
     textColor: "text-purple-accent",
+    emptyText: "心動的瞬間太私密，連 AI 都不好意思挑出來～懂的都懂！",
   },
 ];
 
@@ -64,10 +68,10 @@ export function GoldenQuotes({ result }: Props) {
               </span>
 
               {/* Quote text */}
-              <p className="font-heading text-[17px] font-semibold leading-[1.7] text-text-primary">
+              <p className={`font-heading text-[17px] font-semibold leading-[1.7] ${quote ? "text-text-primary" : "text-text-muted"}`}>
                 {quote
                   ? `「${quote.quote}」`
-                  : "等待 AI 分析產生金句..."}
+                  : cat.emptyText}
               </p>
 
               {/* Attribution */}
