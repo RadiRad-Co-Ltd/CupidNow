@@ -2,11 +2,16 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+# Copy project metadata and install dependencies first (cache layer)
 COPY pyproject.toml .
-RUN pip install --no-cache-dir .
+# Create minimal package structure so pip install . can resolve deps
+RUN mkdir -p app && touch app/__init__.py && \
+    pip install --no-cache-dir . && \
+    rm -rf app
 
 RUN adduser --disabled-password --gecos '' appuser
 
+# Copy actual application code
 COPY app/ app/
 
 USER appuser
