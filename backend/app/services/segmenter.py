@@ -64,14 +64,14 @@ def batch_cut(texts: list[str], progress: dict | None = None) -> list[list[str]]
     if unique_texts:
         ws = _get_ws()
         unique_results: list[list[str]] = []
-        chunk_size = 4096
+        chunk_size = 2048
         total_chunks = (len(unique_texts) + chunk_size - 1) // chunk_size
         if progress is not None:
             progress["done"] = 0
             progress["total"] = total_chunks
         for i in range(0, len(unique_texts), chunk_size):
             chunk = unique_texts[i : i + chunk_size]
-            results = ws(chunk, batch_size=4096, max_length=128)
+            results = ws(chunk, batch_size=2048, max_length=128)
             unique_results.extend(list(sent) for sent in results)
             if progress is not None:
                 progress["done"] = progress["done"] + 1
