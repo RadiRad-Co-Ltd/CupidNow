@@ -27,12 +27,15 @@ def cut(text: str) -> list[str]:
     return list(results[0])
 
 
-def batch_cut(texts: list[str]) -> list[list[str]]:
+def batch_cut(texts: list[str], progress: dict | None = None) -> list[list[str]]:
     """Batch segment using CKIP with dedup optimization.
 
     1. Skip trivially short texts (≤1 char) — they can't produce useful words.
     2. Deduplicate — chat logs have massive repetition.
     3. Segment only unique texts, then map results back.
+
+    If progress dict is provided, updates progress["done"] and progress["total"]
+    after each chunk so callers can report real-time progress.
     """
     if not texts:
         return []
@@ -62,10 +65,16 @@ def batch_cut(texts: list[str]) -> list[list[str]]:
         ws = _get_ws()
         unique_results: list[list[str]] = []
         chunk_size = 4096
+        total_chunks = (len(unique_texts) + chunk_size - 1) // chunk_size
+        if progress is not None:
+            progress["done"] = 0
+            progress["total"] = total_chunks
         for i in range(0, len(unique_texts), chunk_size):
             chunk = unique_texts[i : i + chunk_size]
             results = ws(chunk, batch_size=4096, max_length=128)
             unique_results.extend(list(sent) for sent in results)
+            if progress is not None:
+                progress["done"] = progress["done"] + 1
     else:
         unique_results = []
 

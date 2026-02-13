@@ -255,7 +255,7 @@ def merge_shared_interests(
     return result
 
 
-def compute_text_analysis(parsed: dict) -> dict:
+def compute_text_analysis(parsed: dict, progress: dict | None = None) -> dict:
     messages: list[Message] = parsed["messages"]
     persons: list[str] = parsed["persons"]
 
@@ -273,7 +273,7 @@ def compute_text_analysis(parsed: dict) -> dict:
         all_texts.extend(texts_by_person[p])
         person_ranges.append((p, start, len(all_texts)))
 
-    all_words = segmenter.batch_cut(all_texts)
+    all_words = segmenter.batch_cut(all_texts, progress=progress)
 
     # 統計
     word_cloud = {}
