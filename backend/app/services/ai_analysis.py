@@ -11,7 +11,8 @@ from snownlp import SnowNLP
 from app.services.parser import Message
 from app.services.text_analysis import STOP_WORDS
 
-_client = None
+_groq_client = None
+_gemini_client = None
 
 _NOISE_RE = re.compile(r"^[\d\W\s]+$|^(.)\1+$")
 
@@ -54,12 +55,23 @@ def _sentiment_intensity(content: str) -> float:
         return 0.0
 
 
-def _get_client():
-    global _client
-    if _client is None:
+def _get_groq_client():
+    global _groq_client
+    if _groq_client is None:
         from groq import AsyncGroq
-        _client = AsyncGroq()
-    return _client
+        _groq_client = AsyncGroq()
+    return _groq_client
+
+
+def _get_gemini_client():
+    global _gemini_client
+    if _gemini_client is None:
+        from google import genai
+        api_key = os.environ.get("GOOGLE_API_KEY")
+        if not api_key:
+            return None
+        _gemini_client = genai.Client(api_key=api_key)
+    return _gemini_client
 
 
 def sample_messages(
@@ -240,20 +252,37 @@ def build_prompt(messages: list[Message], persons: list[str], stats: dict | None
 
 
 class AIRateLimitError(Exception):
-    """Raised when the AI API returns 429 Too Many Requests."""
+    """Raised when all AI providers are rate limited."""
     pass
 
 
-async def analyze_with_ai(
-    messages: list[Message], persons: list[str], stats: dict | None = None,
-) -> dict:
-    """Call Groq API for sentiment analysis and golden quotes."""
-    sampled = sample_messages(messages)
-    if not sampled:
-        return _fallback_result()
+def _parse_ai_response(text: str, provider: str) -> dict | None:
+    """Parse AI response text into dict. Returns None on failure."""
+    text = text.strip()
 
-    prompt = build_prompt(sampled, persons, stats)
-    client = _get_client()
+    # Try direct parse
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    # Try extracting from markdown code block
+    if "```" in text:
+        try:
+            json_str = text.split("```")[1]
+            if json_str.startswith("json"):
+                json_str = json_str[4:]
+            return json.loads(json_str.strip())
+        except (json.JSONDecodeError, IndexError):
+            pass
+
+    logger.error("[%s] JSON parse failed, text preview: %s", provider, text[:500])
+    return None
+
+
+async def _call_groq(prompt: str) -> dict | None:
+    """Try Groq API. Returns parsed dict, None on parse failure, raises on rate limit."""
+    client = _get_groq_client()
 
     try:
         response = await client.chat.completions.create(
@@ -264,29 +293,73 @@ async def analyze_with_ai(
         )
     except Exception as e:
         if "429" in str(e) or "rate_limit" in str(e).lower():
-            logger.warning("AI rate limited: %s", e)
-            raise AIRateLimitError("AI 分析額度已達上限，請稍後再試") from e
+            logger.warning("[Groq] Rate limited: %s", e)
+            return None  # Signal to try fallback
         raise
 
     text = response.choices[0].message.content.strip()
     finish_reason = response.choices[0].finish_reason
 
     if finish_reason != "stop":
-        logger.warning("AI response truncated (finish_reason=%s), text length=%d", finish_reason, len(text))
+        logger.warning("[Groq] Response truncated (finish_reason=%s), length=%d", finish_reason, len(text))
+
+    result = _parse_ai_response(text, "Groq")
+    if result:
+        logger.info("[Groq] AI analysis succeeded")
+    return result
+
+
+async def _call_gemini(prompt: str) -> dict | None:
+    """Try Google Gemini API as fallback."""
+    client = _get_gemini_client()
+    if client is None:
+        logger.warning("[Gemini] No GOOGLE_API_KEY configured, skipping")
+        return None
 
     try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        if "```" in text:
-            try:
-                json_str = text.split("```")[1]
-                if json_str.startswith("json"):
-                    json_str = json_str[4:]
-                return json.loads(json_str.strip())
-            except (json.JSONDecodeError, IndexError):
-                pass
-        logger.error("AI JSON parse failed. finish_reason=%s, text preview: %s", finish_reason, text[:500])
+        response = await client.aio.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+        )
+    except Exception as e:
+        if "429" in str(e) or "rate" in str(e).lower():
+            logger.warning("[Gemini] Rate limited: %s", e)
+            return None
+        logger.exception("[Gemini] API call failed")
+        return None
+
+    text = response.text or ""
+
+    result = _parse_ai_response(text, "Gemini")
+    if result:
+        logger.info("[Gemini] AI analysis succeeded (fallback)")
+    return result
+
+
+async def analyze_with_ai(
+    messages: list[Message], persons: list[str], stats: dict | None = None,
+) -> dict:
+    """Call AI API with Groq → Gemini fallback chain."""
+    sampled = sample_messages(messages)
+    if not sampled:
         return _fallback_result()
+
+    prompt = build_prompt(sampled, persons, stats)
+
+    # 1. Try Groq (faster)
+    result = await _call_groq(prompt)
+    if result:
+        return result
+
+    # 2. Fallback to Gemini
+    logger.info("Groq unavailable, falling back to Gemini")
+    result = await _call_gemini(prompt)
+    if result:
+        return result
+
+    # 3. Both failed
+    logger.error("All AI providers failed")
+    raise AIRateLimitError("AI 分析服務暫時不可用，請稍後再試")
 
 
 def _fallback_result() -> dict:

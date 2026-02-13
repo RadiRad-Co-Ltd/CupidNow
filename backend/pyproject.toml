@@ -9,6 +9,7 @@ dependencies = [
     "jieba>=0.42",
     "snownlp>=0.12",
     "groq>=0.25",
+    "google-genai>=1.0",
 ]
 
 [project.optional-dependencies]
