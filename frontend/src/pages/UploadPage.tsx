@@ -30,7 +30,7 @@ export function UploadPage({ onResult }: Props) {
   const [textIdx, setTextIdx] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const timerRef = useRef<ReturnType<typeof setInterval>>();
+  const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
   // Smooth progress animation + rotating text while loading
   useEffect(() => {
