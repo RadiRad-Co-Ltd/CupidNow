@@ -90,7 +90,8 @@ async def analyze(
     ai_result = None
     if not skip_ai:
         try:
-            from app.services.ai_analysis import analyze_with_ai
+            from app.services.ai_analysis import analyze_with_ai, _compute_base_score
+            base_score, dimensions = _compute_base_score(basic_stats, reply_behavior, cold_wars)
             ai_stats = {
                 "basicStats": basic_stats,
                 "replyBehavior": reply_behavior,
@@ -101,6 +102,7 @@ async def analyze(
                 parsed["messages"], persons, ai_stats,
                 interest_context=interest_context,
                 msg_words=msg_words, word_idf=word_idf,
+                base_score=base_score, dimensions=dimensions,
             )
         except Exception:
             logger.exception("AI analysis failed")
@@ -224,7 +226,8 @@ async def analyze_stream(
             yield _sse_event({"progress": 75, "stage": "AI 正在解讀你們的故事..."})
             await asyncio.sleep(0)
             try:
-                from app.services.ai_analysis import analyze_with_ai, AIRateLimitError
+                from app.services.ai_analysis import analyze_with_ai, AIRateLimitError, _compute_base_score
+                base_score, dimensions = _compute_base_score(basic_stats, reply_behavior, cold_wars)
                 ai_stats = {
                     "basicStats": basic_stats,
                     "replyBehavior": reply_behavior,
@@ -236,6 +239,7 @@ async def analyze_stream(
                     messages, persons, ai_stats,
                     interest_context=interest_context,
                     msg_words=msg_words, word_idf=word_idf,
+                    base_score=base_score, dimensions=dimensions,
                 )
                 del messages
             except AIRateLimitError:

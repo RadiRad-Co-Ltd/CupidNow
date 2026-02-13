@@ -16,6 +16,117 @@ _gemini_client = None
 _NOISE_RE = re.compile(r"^[\d\W\s]+$|^(.)\1+$")
 
 
+def _compute_base_score(
+    basic_stats: dict | None,
+    reply_behavior: dict | None,
+    cold_wars: list | None,
+) -> tuple[int, dict[str, int]]:
+    """Compute a 0-100 base score from quantitative data.
+
+    Returns (base_score, dimensions_dict) where dimensions_dict contains
+    per-dimension scores for transparency in the AI prompt.
+    """
+    # ── 1. 互動頻率 (25%) ──
+    freq_score = 50
+    if basic_stats:
+        mc = basic_stats.get("messageCount", {})
+        total_msgs = mc.get("total", 0)
+        dr = basic_stats.get("dateRange", {})
+        total_days = max(dr.get("totalDays", 1), 1)
+        msgs_per_day = total_msgs / total_days
+
+        # Score curve: 0→20, 5→40, 15→60, 30→75, 60→90, 100+→95
+        if msgs_per_day >= 100:
+            freq_score = 95
+        elif msgs_per_day >= 60:
+            freq_score = 90
+        elif msgs_per_day >= 30:
+            freq_score = 75 + (msgs_per_day - 30) / 30 * 15
+        elif msgs_per_day >= 15:
+            freq_score = 60 + (msgs_per_day - 15) / 15 * 15
+        elif msgs_per_day >= 5:
+            freq_score = 40 + (msgs_per_day - 5) / 10 * 20
+        else:
+            freq_score = 20 + msgs_per_day / 5 * 20
+
+        # Call bonus
+        cs = basic_stats.get("callStats", {})
+        if cs.get("completedCalls", 0) > 0:
+            freq_score = min(100, freq_score + 5)
+
+    # ── 2. 主動平衡 (20%) ──
+    balance_score = 50
+    if basic_stats:
+        mc = basic_stats.get("messageCount", {})
+        person_counts = [v for k, v in mc.items() if k != "total" and isinstance(v, int)]
+        if len(person_counts) >= 2:
+            mn, mx = min(person_counts), max(person_counts)
+            if mx > 0:
+                balance_score = round(mn / mx * 100)
+
+    # ── 3. 回覆默契 (25%) ──
+    reply_score = 50
+    if reply_behavior:
+        irr = reply_behavior.get("instantReplyRate", {})
+        lor = reply_behavior.get("leftOnRead", {})
+
+        # Average instant reply rate across persons
+        rates = [v for v in irr.values() if isinstance(v, (int, float))]
+        avg_irr = sum(rates) / len(rates) * 100 if rates else 50
+
+        # Left-on-read penalty: each occurrence -3, capped at -30
+        total_lor = sum(v for v in lor.values() if isinstance(v, int))
+        lor_penalty = min(total_lor * 3, 30)
+
+        reply_score = max(0, min(100, round(avg_irr - lor_penalty)))
+
+    # ── 4. 穩定度 (15%) ──
+    cw_count = len(cold_wars) if cold_wars else 0
+    if cw_count == 0:
+        stability_score = 95
+    elif cw_count == 1:
+        stability_score = 75
+    elif cw_count == 2:
+        stability_score = 60
+    else:
+        stability_score = 45
+
+    # ── 5. 聯繫深度 (15%) ──
+    depth_score = 50
+    if basic_stats:
+        cs = basic_stats.get("callStats", {})
+        total_call_min = cs.get("totalDurationSeconds", 0) / 60
+        # Call minutes bonus: +1 per 5 min, cap +25
+        call_bonus = min(round(total_call_min / 5), 25)
+
+        # Longest streak bonus (from dateRange or basic stats)
+        # Use total days as proxy for commitment duration
+        dr = basic_stats.get("dateRange", {})
+        total_days = dr.get("totalDays", 0)
+        streak_bonus = min(round(total_days / 10), 25)
+
+        depth_score = min(100, 50 + call_bonus + streak_bonus)
+
+    dimensions = {
+        "互動頻率": round(freq_score),
+        "主動平衡": round(balance_score),
+        "回覆默契": round(reply_score),
+        "穩定度": stability_score,
+        "聯繫深度": round(depth_score),
+    }
+
+    base = round(
+        freq_score * 0.25
+        + balance_score * 0.20
+        + reply_score * 0.25
+        + stability_score * 0.15
+        + depth_score * 0.15
+    )
+    base = max(0, min(100, base))
+
+    return base, dimensions
+
+
 def _is_meaningful(content: str) -> bool:
     """Check if a message has real content worth sending to AI.
 
@@ -200,6 +311,7 @@ def _format_stats_block(stats: dict | None) -> str:
 def build_prompt(
     messages: list[Message], persons: list[str],
     stats: dict | None = None, interest_context: str = "",
+    base_score: int | None = None, dimensions: dict[str, int] | None = None,
 ) -> str:
     p1 = persons[0]
     p2 = persons[1] if len(persons) > 1 else "Person2"
@@ -221,6 +333,20 @@ def build_prompt(
         timeline.append(f"[{m.timestamp.strftime('%m/%d %H:%M')}] {m.sender}: {content}")
 
     stats_block = _format_stats_block(stats)
+
+    # Base score block for AI prompt
+    if base_score is not None and dimensions:
+        lo = max(base_score - 15, 0)
+        hi = min(base_score + 15, 100)
+        dim_parts = "  ".join(f"{k}：{v}" for k, v in dimensions.items())
+        base_score_block = (
+            f"\n── 量化基底分：{base_score} / 100 ──\n"
+            f"  {dim_parts}\n"
+            f"你的最終 loveScore.score 必須在 {lo}~{hi} 之間（基底分 ±15）。\n"
+            f"只有在對話情感品質明顯偏離數據時才大幅調整。\n"
+        )
+    else:
+        base_score_block = ""
 
     # Interest context block (TF-IDF distinctive words + example sentences)
     interest_block = f"\n\n{interest_context}\n" if interest_context else ""
@@ -246,7 +372,7 @@ def build_prompt(
 注意：評分時請同時參考下方的量化數據，例如秒回率高代表主動性強、已讀不回多代表可能有冷淡傾向、通話頻繁代表感情較親密。
 
 {stats_block}
-
+{base_score_block}
 ── {p1} 說的話 ──
 {chr(10).join(p1_lines[-80:])}
 
@@ -266,13 +392,7 @@ items 必須是對話中出現的【具體專有名詞】，不要寫模糊的�
 請綜合以上內容，回傳以下 JSON（不要加 markdown code block、不要加任何其他文字）：
 {{
   "loveScore": {{
-    "score": <0-100 心動指數，請參考以下五個維度綜合評分，但你也可以根據對話特色自行調整權重：
-      甜度/關心頻率（約 25%）：甜蜜訊息的佔比和濃度，長期伴侶的日常關心（吃了嗎、路上小心）也算
-      主動性平衡（約 20%）：雙方主動發訊的比例是否均衡，還是單方面在追
-      情感表達（約 20%）：曖昧期看調情放電，穩定期看有沒有持續表達愛意和在乎
-      默契度（約 20%）：回覆速度、話題銜接順暢度、互相呼應的程度
-      衝突修復力（約 15%）：吵架或冷淡後多快回溫、有沒有主動破冰
-    >,
+    "score": <0-100 心動指數。系統已根據量化數據算出基底分（見上方），你的分數必須在基底分 ±15 範圍內。請根據對話的情感品質微調：甜蜜互動多可加分，冷淡敷衍可扣分>,
     "comment": "<80-120 字的活潑評語，2-3 句話。像閨蜜在旁邊幫你分析，第一句點出你們的互動特色或亮點，第二句具體描述一個讓人印象深刻的互動模式，第三句給出一句暖心或俏皮的總結。根據關係階段給出不同風格的點評（曖昧期可以俏皮，老夫老妻可以溫馨）>"
   }},
   "sentiment": {{
@@ -403,28 +523,50 @@ async def _call_gemini(prompt: str) -> dict | None:
     return result
 
 
+def _clamp_love_score(ai_result: dict, base_score: int | None) -> None:
+    """Clamp AI loveScore to [base-15, base+15] range."""
+    if base_score is None:
+        return
+    ls = ai_result.get("loveScore")
+    if not ls or "score" not in ls:
+        return
+    score = ls["score"]
+    if not isinstance(score, (int, float)):
+        return
+    lo = max(base_score - 15, 0)
+    hi = min(base_score + 15, 100)
+    ls["score"] = max(lo, min(hi, int(score)))
+
+
 async def analyze_with_ai(
     messages: list[Message], persons: list[str], stats: dict | None = None,
     interest_context: str = "",
     msg_words: list[list[str]] | None = None,
     word_idf: dict[str, float] | None = None,
+    base_score: int | None = None,
+    dimensions: dict[str, int] | None = None,
 ) -> dict:
     """Call AI API with Groq → Gemini fallback chain."""
     sampled = sample_messages(messages, msg_words=msg_words, word_idf=word_idf)
     if not sampled:
         return _fallback_result()
 
-    prompt = build_prompt(sampled, persons, stats, interest_context=interest_context)
+    prompt = build_prompt(
+        sampled, persons, stats, interest_context=interest_context,
+        base_score=base_score, dimensions=dimensions,
+    )
 
     # 1. Try Groq (faster)
     result = await _call_groq(prompt)
     if result:
+        _clamp_love_score(result, base_score)
         return result
 
     # 2. Fallback to Gemini
     logger.info("Groq unavailable, falling back to Gemini")
     result = await _call_gemini(prompt)
     if result:
+        _clamp_love_score(result, base_score)
         return result
 
     # 3. Both failed
