@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Heart, Sparkles, ShieldCheck, Trash2, EyeOff, UserX } from "lucide-react";
 import { FileDropzone } from "../components/FileDropzone";
@@ -10,13 +10,6 @@ interface Props {
   onResult: (result: AnalysisResult) => void;
 }
 
-const LOADING_TEXTS = [
-  "正在解讀你們的故事...",
-  "計算心動的瞬間...",
-  "分析互動指數...",
-  "尋找最甜蜜的對話...",
-];
-
 const PRIVACY_BADGES = [
   { icon: ShieldCheck, label: "HTTPS 加密傳輸", color: "text-teal-positive" },
   { icon: Trash2, label: "分析完即銷毀", color: "text-rose-primary" },
@@ -27,30 +20,15 @@ const PRIVACY_BADGES = [
 export function UploadPage({ onResult }: Props) {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [textIdx, setTextIdx] = useState(0);
+  const [stage, setStage] = useState("");
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
-
-  // Smooth progress animation + rotating text while loading
-  useEffect(() => {
-    if (!loading) return;
-    // Simulate smooth progress: ramp up to ~85% over time, then wait for real completion
-    let fakeProgress = 5;
-    timerRef.current = setInterval(() => {
-      fakeProgress += Math.random() * 3 + 0.5;
-      if (fakeProgress > 85) fakeProgress = 85;
-      setProgress((prev) => Math.max(prev, Math.round(fakeProgress)));
-      setTextIdx((prev) => (prev + 1) % LOADING_TEXTS.length);
-    }, 2500);
-    return () => clearInterval(timerRef.current);
-  }, [loading]);
 
   const handleFile = async (file: File) => {
     setLoading(true);
     setError(null);
-    setProgress(5);
-    setTextIdx(0);
+    setProgress(2);
+    setStage("上傳檔案中...");
 
     try {
       if (file.size > 10 * 1024 * 1024) {
@@ -62,26 +40,55 @@ export function UploadPage({ onResult }: Props) {
       const formData = new FormData();
       formData.append("file", file);
 
-      const resp = await fetch(`${API_BASE}/api/analyze`, {
+      const resp = await fetch(`${API_BASE}/api/analyze-stream`, {
         method: "POST",
         body: formData,
       });
 
-      setProgress(95);
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({ detail: "分析失敗" }));
         throw new Error(err.detail || "分析失敗");
       }
 
-      const result: AnalysisResult = await resp.json();
+      const reader = resp.body?.getReader();
+      if (!reader) throw new Error("瀏覽器不支援串流");
+
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finalResult: AnalysisResult | null = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const evt = JSON.parse(line.slice(6));
+            if (evt.error) throw new Error(evt.error);
+            if (evt.progress != null) setProgress(evt.progress);
+            if (evt.stage) setStage(evt.stage);
+            if (evt.result) finalResult = evt.result as AnalysisResult;
+          } catch (parseErr) {
+            if (parseErr instanceof Error && parseErr.message === (parseErr as Error).message) throw parseErr;
+          }
+        }
+      }
+
+      if (!finalResult) throw new Error("未收到分析結果");
+
       setProgress(100);
+      setStage("完成！");
       await new Promise((r) => setTimeout(r, 400));
-      onResult(result);
+      onResult(finalResult);
       navigate("/dashboard");
     } catch (e) {
       setError(e instanceof Error ? e.message : "發生未知錯誤");
     } finally {
-      clearInterval(timerRef.current);
       setLoading(false);
     }
   };
@@ -134,12 +141,12 @@ export function UploadPage({ onResult }: Props) {
               </p>
             </div>
 
-            {/* Rotating text */}
+            {/* Stage text from backend */}
             <p
-              key={textIdx}
+              key={stage}
               className="text-center font-body text-[14px] text-text-secondary animate-fade-in"
             >
-              {LOADING_TEXTS[textIdx]}
+              {stage}
             </p>
 
             <style>{`
