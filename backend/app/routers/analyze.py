@@ -182,7 +182,22 @@ async def analyze_stream(
         yield _sse_event({"progress": 65, "stage": "分析文字內容與文字雲..."})
         await asyncio.sleep(0)
 
-        text_analysis = compute_text_analysis(parsed)
+        # Run CKIP segmentation in a thread so we can send keepalive events
+        text_task = asyncio.ensure_future(
+            asyncio.get_running_loop().run_in_executor(
+                None, compute_text_analysis, parsed
+            )
+        )
+
+        # Send keepalive events every 10s while CKIP processes
+        progress = 65
+        while not text_task.done():
+            done_set, _ = await asyncio.wait({text_task}, timeout=10.0)
+            if not done_set:
+                progress = min(progress + 2, 74)
+                yield _sse_event({"progress": progress, "stage": "分析文字內容與文字雲..."})
+        text_analysis = text_task.result()
+
         transfer_analysis = compute_transfer_analysis(parsed)
         first_conversation = extract_first_conversation(parsed)
 
