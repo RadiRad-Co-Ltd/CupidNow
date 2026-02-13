@@ -25,12 +25,38 @@ export function UploadPage({ onResult }: Props) {
   const [serverReady, setServerReady] = useState(false);
   const navigate = useNavigate();
 
-  // Warm up backend on page load so it's ready when user uploads
+  // Warm up backend on page load — keep polling until it responds
   useEffect(() => {
-    fetch(`${API_BASE}/api/health`)
-      .then(() => setServerReady(true))
-      .catch(() => {});
+    let cancelled = false;
+    const poll = async () => {
+      for (let i = 0; i < 30 && !cancelled; i++) {
+        try {
+          const r = await fetch(`${API_BASE}/api/health`, { signal: AbortSignal.timeout(5000) });
+          if (r.ok) { setServerReady(true); return; }
+        } catch { /* server still waking */ }
+        await new Promise((r) => setTimeout(r, 3000));
+      }
+    };
+    poll();
+    return () => { cancelled = true; };
   }, []);
+
+  const waitForServer = async () => {
+    const MAX_WAIT = 90_000; // 90 seconds max for Render cold start
+    const INTERVAL = 3_000;
+    const start = Date.now();
+    while (Date.now() - start < MAX_WAIT) {
+      try {
+        const r = await fetch(`${API_BASE}/api/health`, { signal: AbortSignal.timeout(5000) });
+        if (r.ok) return true;
+      } catch {
+        // Server still waking up
+      }
+      setStage(`正在喚醒伺服器...（已等 ${Math.round((Date.now() - start) / 1000)} 秒）`);
+      await new Promise((r) => setTimeout(r, INTERVAL));
+    }
+    return false;
+  };
 
   const handleFile = async (file: File) => {
     setLoading(true);
@@ -45,13 +71,13 @@ export function UploadPage({ onResult }: Props) {
         return;
       }
 
-      // If server hasn't responded to warmup yet, wait for it
+      // If server hasn't responded to warmup yet, poll until ready
       if (!serverReady) {
-        try {
-          await fetch(`${API_BASE}/api/health`);
-        } catch {
-          // proceed anyway
+        const ready = await waitForServer();
+        if (!ready) {
+          throw new Error("伺服器喚醒逾時，請重新整理頁面再試一次");
         }
+        setServerReady(true);
         setStage("上傳檔案中...");
         setProgress(3);
       }
