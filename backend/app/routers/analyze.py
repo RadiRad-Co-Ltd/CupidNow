@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import time
@@ -106,7 +107,12 @@ async def analyze(
     if not skip_ai:
         try:
             from app.services.ai_analysis import analyze_with_ai
-            ai_result = await analyze_with_ai(parsed["messages"], persons)
+            ai_stats = {
+                "basicStats": basic_stats,
+                "replyBehavior": reply_behavior,
+                "coldWars": cold_wars,
+            }
+            ai_result = await analyze_with_ai(parsed["messages"], persons, ai_stats)
         except Exception:
             logger.exception("AI analysis failed")
             ai_result = None
@@ -150,6 +156,7 @@ async def analyze_stream(
 
     async def event_stream() -> AsyncGenerator[str, None]:
         yield _sse_event({"progress": 5, "stage": "解析對話記錄中..."})
+        await asyncio.sleep(0)
 
         parsed = parse_line_chat(text)
         if not parsed["messages"]:
@@ -159,18 +166,23 @@ async def analyze_stream(
         total = len(parsed["messages"])
         persons = parsed["persons"]
         yield _sse_event({"progress": 15, "stage": f"已解析 {total:,} 則訊息，計算基礎統計..."})
+        await asyncio.sleep(0)
 
         basic_stats = compute_basic_stats(parsed)
         yield _sse_event({"progress": 30, "stage": "分析回覆行為..."})
+        await asyncio.sleep(0)
 
         reply_behavior = compute_reply_behavior(parsed)
         yield _sse_event({"progress": 45, "stage": "分析時間模式..."})
+        await asyncio.sleep(0)
 
         time_patterns = compute_time_patterns(parsed)
         yield _sse_event({"progress": 55, "stage": "偵測冷戰期間..."})
+        await asyncio.sleep(0)
 
         cold_wars = detect_cold_wars(parsed)
         yield _sse_event({"progress": 65, "stage": "分析文字內容與文字雲..."})
+        await asyncio.sleep(0)
 
         text_analysis = compute_text_analysis(parsed)
 
@@ -186,9 +198,15 @@ async def analyze_stream(
         ai_result = None
         if not skip_ai:
             yield _sse_event({"progress": 75, "stage": "AI 正在解讀你們的故事..."})
+            await asyncio.sleep(0)
             try:
                 from app.services.ai_analysis import analyze_with_ai
-                ai_result = await analyze_with_ai(parsed["messages"], persons)
+                ai_stats = {
+                    "basicStats": basic_stats,
+                    "replyBehavior": reply_behavior,
+                    "coldWars": cold_wars,
+                }
+                ai_result = await analyze_with_ai(parsed["messages"], persons, ai_stats)
             except Exception:
                 logger.exception("AI analysis failed")
                 ai_result = None

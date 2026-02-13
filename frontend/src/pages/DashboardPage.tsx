@@ -13,6 +13,7 @@ import { ColdWarTimeline } from "../components/dashboard/ColdWarTimeline";
 import { SentimentAnalysis } from "../components/dashboard/SentimentAnalysis";
 import { WordCloud } from "../components/dashboard/WordCloud";
 import { GoldenQuotes } from "../components/dashboard/GoldenQuotes";
+import { SharedInterests } from "../components/dashboard/SharedInterests";
 import { ShareCTA } from "../components/dashboard/ShareCTA";
 
 interface Props {
@@ -90,6 +91,7 @@ export function DashboardPage({ result }: Props) {
         <SentimentAnalysis result={result} />
         <WordCloud result={result} />
         <GoldenQuotes result={result} />
+        <SharedInterests result={result} />
       </main>
 
       <ShareCTA result={result} reportRef={reportRef} onRegister={registerShareFn} />

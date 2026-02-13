@@ -64,7 +64,13 @@ export interface AIAnalysis {
     mostTouching: Quote[];
   };
   insight: string;
+  sharedInterests?: SharedInterest[];
   advice?: string[];
+}
+
+export interface SharedInterest {
+  category: string;
+  items: string[];
 }
 
 interface Quote {
