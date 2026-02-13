@@ -61,10 +61,10 @@ def batch_cut(texts: list[str]) -> list[list[str]]:
     if unique_texts:
         ws = _get_ws()
         unique_results: list[list[str]] = []
-        chunk_size = 256
+        chunk_size = 2048
         for i in range(0, len(unique_texts), chunk_size):
             chunk = unique_texts[i : i + chunk_size]
-            results = ws(chunk, batch_size=256, max_length=128)
+            results = ws(chunk, batch_size=2048, max_length=128)
             unique_results.extend(list(sent) for sent in results)
     else:
         unique_results = []
