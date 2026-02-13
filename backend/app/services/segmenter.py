@@ -1,53 +1,85 @@
-"""Unified segmenter using CKIP albert-tiny (singleton, kept in memory).
-
-Optimization: dedup texts before inference, skip trivially short messages.
-"""
+"""Unified segmenter using jieba + dict.txt.big + 10K custom dict."""
 import logging
+import os
+import re
+import threading
+
+import jieba
 
 logger = logging.getLogger(__name__)
+_initialized = False
+_init_lock = threading.Lock()
 
-_ws = None
+_REPEAT_RE = re.compile(r"^(.)\1+$")
+_NOISE_RE = re.compile(r"^[\s\d\W]+$")
 
 
-def _get_ws():
-    """Lazy-load CKIP word segmenter once, keep in memory."""
-    global _ws
-    if _ws is None:
-        from ckip_transformers.nlp import CkipWordSegmenter
-        logger.info("Loading CKIP albert-tiny model...")
-        _ws = CkipWordSegmenter(model="albert-tiny", device=-1)
-        logger.info("CKIP model loaded")
-    return _ws
+def _is_trivial(text: str) -> bool:
+    """Return True if text is unlikely to produce meaningful segmented words.
+
+    Aggressive filter for chat messages:
+    - ≤ 4 chars: almost always stop words / filler in Chinese chat
+    - Repeated chars: "哈哈哈哈哈"
+    - Pure noise: punctuation, digits, whitespace
+    """
+    if len(text) <= 4:
+        return True
+    if _REPEAT_RE.match(text):
+        return True
+    if _NOISE_RE.match(text):
+        return True
+    return False
+
+
+def _ensure_initialized():
+    global _initialized
+    if _initialized:
+        return
+    with _init_lock:
+        if _initialized:
+            return
+        data_dir = os.path.join(os.path.dirname(__file__), "..", "..", "data")
+        big_dict = os.path.join(data_dir, "dict.txt.big")
+        if os.path.exists(big_dict):
+            jieba.set_dictionary(big_dict)
+            logger.info("jieba: loaded dict.txt.big")
+        user_dict = os.path.join(data_dir, "user_dict.txt")
+        if os.path.exists(user_dict):
+            jieba.load_userdict(user_dict)
+            logger.info("jieba: loaded user_dict.txt")
+        jieba.initialize()
+        _initialized = True
+        logger.info("jieba initialized")
 
 
 def cut(text: str) -> list[str]:
     """Segment a single string."""
-    ws = _get_ws()
-    results = ws([text], batch_size=1, max_length=128)
-    return list(results[0])
+    _ensure_initialized()
+    return jieba.lcut(text)
 
 
 def batch_cut(texts: list[str], progress: dict | None = None) -> list[list[str]]:
-    """Batch segment using CKIP with dedup optimization.
+    """Batch segment with aggressive pre-filter + dedup.
 
-    1. Skip trivially short texts (≤1 char) — they can't produce useful words.
-    2. Deduplicate — chat logs have massive repetition.
-    3. Segment only unique texts, then map results back.
-
-    If progress dict is provided, updates progress["done"] and progress["total"]
-    after each chunk so callers can report real-time progress.
+    1. Pre-filter trivial texts (≤4 chars, noise, repeats) — skip entirely.
+    2. Deduplicate remaining texts.
+    3. Segment only unique non-trivial texts via jieba, then map results back.
     """
     if not texts:
         return []
 
-    # Build dedup map: unique text → index in unique list
+    _ensure_initialized()
+
+    # Build dedup map with pre-filter
     unique_map: dict[str, int] = {}
     unique_texts: list[str] = []
-    text_indices: list[int] = []  # maps original index → unique index (-1 = skipped)
+    text_indices: list[int] = []  # -1 = trivial (skipped)
 
+    trivial_count = 0
     for t in texts:
-        if len(t) <= 1:
+        if _is_trivial(t):
             text_indices.append(-1)
+            trivial_count += 1
             continue
         if t not in unique_map:
             unique_map[t] = len(unique_texts)
@@ -55,28 +87,17 @@ def batch_cut(texts: list[str], progress: dict | None = None) -> list[list[str]]
         text_indices.append(unique_map[t])
 
     logger.info(
-        "batch_cut: %d total → %d unique (%.0f%% dedup)",
-        len(texts), len(unique_texts),
+        "batch_cut: %d total → %d trivial skipped → %d unique for jieba (%.0f%% saved)",
+        len(texts), trivial_count, len(unique_texts),
         (1 - len(unique_texts) / max(len(texts), 1)) * 100,
     )
 
-    # Segment unique texts only
-    if unique_texts:
-        ws = _get_ws()
-        unique_results: list[list[str]] = []
-        chunk_size = 2048
-        total_chunks = (len(unique_texts) + chunk_size - 1) // chunk_size
-        if progress is not None:
-            progress["done"] = 0
-            progress["total"] = total_chunks
-        for i in range(0, len(unique_texts), chunk_size):
-            chunk = unique_texts[i : i + chunk_size]
-            results = ws(chunk, batch_size=2048, max_length=128)
-            unique_results.extend(list(sent) for sent in results)
-            if progress is not None:
-                progress["done"] = progress["done"] + 1
-    else:
-        unique_results = []
+    # Segment unique texts
+    unique_results = [jieba.lcut(t) for t in unique_texts]
+
+    if progress is not None:
+        progress["done"] = 1
+        progress["total"] = 1
 
     # Map back to original order
     return [

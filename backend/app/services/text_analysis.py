@@ -255,7 +255,7 @@ def merge_shared_interests(
     return result
 
 
-def compute_text_analysis(parsed: dict, progress: dict | None = None) -> dict:
+def compute_text_analysis(parsed: dict) -> dict:
     messages: list[Message] = parsed["messages"]
     persons: list[str] = parsed["persons"]
 
@@ -265,7 +265,7 @@ def compute_text_analysis(parsed: dict, progress: dict | None = None) -> dict:
         if m.msg_type == "text":
             texts_by_person[m.sender].append(_URL_RE.sub("", m.content))
 
-    # 批次分詞（CKIP）
+    # 批次分詞（jieba）
     all_texts: list[str] = []
     person_ranges: list[tuple[str, int, int]] = []  # (person, start, end)
     for p in persons:
@@ -273,7 +273,7 @@ def compute_text_analysis(parsed: dict, progress: dict | None = None) -> dict:
         all_texts.extend(texts_by_person[p])
         person_ranges.append((p, start, len(all_texts)))
 
-    all_words = segmenter.batch_cut(all_texts, progress=progress)
+    all_words = segmenter.batch_cut(all_texts)
 
     # 統計
     word_cloud = {}

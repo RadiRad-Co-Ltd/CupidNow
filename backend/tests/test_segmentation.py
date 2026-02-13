@@ -2,7 +2,7 @@ from app.services.segmenter import cut, batch_cut
 
 
 class TestCut:
-    """cut() uses CKIP for single text segmentation."""
+    """cut() uses jieba for single text segmentation."""
 
     def test_place_name(self):
         assert "信義區" in cut("我們去信義區逛街")
@@ -11,6 +11,10 @@ class TestCut:
         words = cut("下午來喝珍珠奶茶")
         assert "珍珠奶茶" in words or "珍珠" in words
 
+    def test_office(self):
+        words = cut("進辦公室開會")
+        assert "辦公室" in words
+
     def test_returns_list(self):
         result = cut("你好嗎")
         assert isinstance(result, list)
@@ -18,7 +22,7 @@ class TestCut:
 
 
 class TestBatchCut:
-    """batch_cut() uses CKIP for batch segmentation."""
+    """batch_cut() uses jieba for batch segmentation."""
 
     def test_returns_list_of_lists(self):
         results = batch_cut(["你好嗎", "今天天氣好"])
@@ -40,7 +44,7 @@ class TestBatchCut:
         assert len(results[0]) > 0
 
     def test_large_batch(self):
-        """Verify chunking works for batches > chunk_size."""
+        """Verify dedup works for large batches."""
         texts = ["今天天氣好"] * 300
         results = batch_cut(texts)
         assert len(results) == 300
