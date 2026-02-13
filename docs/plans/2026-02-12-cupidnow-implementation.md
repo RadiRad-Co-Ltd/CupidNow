@@ -1,12 +1,23 @@
 # CupidNow Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **狀態**：所有 17 個 Task 已完成。已部署上線。
+> - 前端：https://cupidnow.netlify.app (Netlify)
+> - 後端：https://cupidnow-api.onrender.com (Render Docker)
 
 **Goal:** Build a web application that analyzes LINE chat txt exports to visualize chat frequency, engagement patterns, and emotional dynamics between two people — suitable for both 曖昧 and 戀愛 stages.
 
-**Architecture:** Frontend-backend separation. React + Vite frontend handles file encryption and data visualization. Python + FastAPI backend handles decryption, LINE txt parsing, statistical analysis, text analysis, and Claude API calls. All processing is memory-only with immediate cleanup.
+**Architecture:** Frontend-backend separation. React + Vite frontend handles data visualization. Python + FastAPI backend handles LINE txt parsing, statistical analysis, text analysis, and Claude API calls. All processing is memory-only with immediate cleanup.
 
-**Tech Stack:** React 18, Vite, TailwindCSS v4, Recharts, TypeScript | Python 3.12, FastAPI, pandas, jieba, anthropic SDK | AES-256-GCM encryption
+**Tech Stack (Actual):** React 19, Vite 7, Tailwind CSS v4, Lucide React, html-to-image, TypeScript 5.9 | Python 3.12, FastAPI, pandas, jieba, anthropic SDK
+
+**Changes from Original Plan:**
+- ~~Recharts~~ → 自製 CSS 圖表元件
+- ~~AES-256-GCM 加密~~ → HTTPS 明文傳輸 + 伺服器端安全措施（速率限制、CORS、檔案大小限制）
+- ~~html2canvas~~ → html-to-image（支援 Tailwind v4 的 oklch/oklab 色彩函數）
+- ~~SSE 進度推送~~ → 簡易前端進度條
+- 新增 Lucide React 圖示庫（取代 emoji）
+- 新增 Web Share API 社群分享功能
+- 新增手機 RWD 直式排版
 
 **Design Reference:** UI mockup at `designs/cupidnow-ui.pen` — design tokens listed below.
 
@@ -2383,20 +2394,26 @@ Ensure all dashboard sections stack properly on mobile. Test at 375px, 768px, 10
 
 | # | Task | Status |
 |---|------|--------|
-| 1 | Backend scaffold | ⬜ |
-| 2 | LINE txt parser | ⬜ |
-| 3 | Basic stats engine | ⬜ |
-| 4 | Reply behavior analysis | ⬜ |
-| 5 | Time patterns analysis | ⬜ |
-| 6 | Cold war detection | ⬜ |
-| 7 | Text analysis (word cloud) | ⬜ |
-| 8 | Encryption utilities | ⬜ |
-| 9 | Claude API integration | ⬜ |
-| 10 | API endpoint | ⬜ |
-| 11 | Frontend scaffold | ⬜ |
-| 12 | Upload page | ⬜ |
-| 13 | Dashboard: hero + stats + balance | ⬜ |
-| 14 | Dashboard: reply + time charts | ⬜ |
-| 15 | Dashboard: remaining sections | ⬜ |
-| 16 | Integration test | ⬜ |
-| 17 | Dev server + manual test | ⬜ |
+| 1 | Backend scaffold | ✅ |
+| 2 | LINE txt parser | ✅ |
+| 3 | Basic stats engine | ✅ |
+| 4 | Reply behavior analysis | ✅ |
+| 5 | Time patterns analysis | ✅ |
+| 6 | Cold war detection | ✅ |
+| 7 | Text analysis (word cloud) | ✅ |
+| 8 | Encryption utilities | ✅ (保留但 API 不再使用加密) |
+| 9 | Claude API integration | ✅ |
+| 10 | API endpoint | ✅ (移除加密，新增速率限制/檔案大小限制) |
+| 11 | Frontend scaffold | ✅ |
+| 12 | Upload page | ✅ (移除前端加密) |
+| 13 | Dashboard: hero + stats + balance | ✅ |
+| 14 | Dashboard: reply + time charts | ✅ (CSS 圖表取代 Recharts) |
+| 15 | Dashboard: remaining sections | ✅ |
+| 16 | Integration test | ✅ (42 tests passing) |
+| 17 | Dev server + manual test | ✅ |
+| — | Lucide React 圖示替換 | ✅ (額外) |
+| — | Mock data 開發預覽 | ✅ (額外) |
+| — | 分享卡 + Web Share API | ✅ (額外) |
+| — | 手機 RWD 直式排版 | ✅ (額外) |
+| — | Netlify + Render 部署 | ✅ (額外) |
+| — | CI/CD 自動部署 | ✅ (額外) |
