@@ -29,7 +29,7 @@ function normalizeItem(item: string | SharedInterestItem): { name: string; count
 }
 
 export function SharedInterests({ result }: Props) {
-  const interests = result.aiAnalysis?.sharedInterests;
+  const interests = result.textAnalysis?.sharedInterests;
   if (!interests || interests.length === 0) return null;
 
   return (

@@ -113,6 +113,12 @@ export const mockResult: AnalysisResult = {
       { phrase: "乖乖睡", count: 98 },
       { phrase: "你最棒了", count: 73 },
     ],
+    sharedInterests: [
+      { category: "愛去的地方", items: [{ name: "信義區", count: 42 }, { name: "淡水老街", count: 28 }, { name: "陽明山", count: 19 }, { name: "貓空", count: 12 }] },
+      { category: "愛吃的東西", items: [{ name: "拉麵", count: 35 }, { name: "火鍋", count: 31 }, { name: "珍奶", count: 24 }, { name: "滷肉飯", count: 18 }] },
+      { category: "愛看的劇", items: [{ name: "黑暗榮耀", count: 15 }, { name: "想見你", count: 12 }, { name: "華燈初上", count: 8 }] },
+      { category: "常一起做的事", items: [{ name: "逛街", count: 38 }, { name: "看電影", count: 27 }, { name: "打遊戲", count: 22 }, { name: "散步", count: 15 }] },
+    ],
   },
   aiAnalysis: {
     loveScore: {
@@ -152,12 +158,6 @@ export const mockResult: AnalysisResult = {
     },
     insight:
       "你們的對話以正面情緒為主基調，日常分享佔了很大比例，代表彼此在對方生活中越來越重要。摩擦比例極低（僅 4%），而且每次低潮都能很快回溫，說明你們的互動品質很高。",
-    sharedInterests: [
-      { category: "愛去的地方", items: [{ name: "信義區", count: 42 }, { name: "淡水老街", count: 28 }, { name: "陽明山", count: 19 }, { name: "貓空", count: 12 }] },
-      { category: "愛吃的東西", items: [{ name: "拉麵", count: 35 }, { name: "火鍋", count: 31 }, { name: "珍奶", count: 24 }, { name: "滷肉飯", count: 18 }] },
-      { category: "愛看的劇", items: [{ name: "黑暗榮耀", count: 15 }, { name: "想見你", count: 12 }, { name: "華燈初上", count: 8 }] },
-      { category: "常一起做的事", items: [{ name: "逛街", count: 38 }, { name: "看電影", count: 27 }, { name: "打遊戲", count: 22 }, { name: "散步", count: 15 }] },
-    ],
     advice: [
       "小美的回覆速度很快，但有時候可以慢一拍，讓對方多主動一點，別讓自己太累！",
       "阿明偶爾會已讀不回，如果當下真的很忙，一句「等等回你」就能讓對方安心很多。",

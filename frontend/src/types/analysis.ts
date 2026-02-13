@@ -53,6 +53,7 @@ export interface ColdWarEvent {
 export interface TextAnalysis {
   wordCloud: Record<string, Array<{ word: string; count: number }>>;
   uniquePhrases: Array<{ phrase: string; count: number }>;
+  sharedInterests?: SharedInterest[];
 }
 
 export interface AIAnalysis {
@@ -64,7 +65,6 @@ export interface AIAnalysis {
     mostTouching: Quote[];
   };
   insight: string;
-  sharedInterests?: SharedInterest[];
   advice?: string[];
 }
 
@@ -75,7 +75,7 @@ export interface SharedInterest {
 
 export interface SharedInterestItem {
   name: string;
-  count: number;
+  count?: number;
 }
 
 interface Quote {

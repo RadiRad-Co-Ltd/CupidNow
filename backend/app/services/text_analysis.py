@@ -104,6 +104,157 @@ STOP_WORDS = {
 
 _URL_RE = re.compile(r"https?://\S+|www\.\S+", re.IGNORECASE)
 
+# ── Shared interest category keywords ──
+# Suffixes / patterns that hint at a category
+_PLACE_HINTS = {
+    "區", "路", "街", "站", "山", "湖", "海", "灣", "島", "港", "園",
+    "寺", "廟", "堂", "館", "場", "城", "鎮", "村", "里", "巷",
+    "夜市", "老街", "商圈", "百貨", "公園", "車站", "機場", "碼頭",
+}
+_FOOD_HINTS = {
+    "麵", "飯", "湯", "粥", "鍋", "餅", "包", "糕", "酥", "捲",
+    "雞", "豬", "牛", "魚", "蝦", "蛋", "肉", "菜", "豆", "奶",
+    "茶", "咖啡", "珍奶", "奶茶", "拿鐵", "啤酒", "紅酒",
+    "拉麵", "火鍋", "壽司", "披薩", "漢堡", "炸雞", "滷味",
+    "甜點", "蛋糕", "冰淇淋", "布丁", "鬆餅", "巧克力",
+    "餐廳", "小吃", "早餐", "午餐", "晚餐", "宵夜", "便當",
+}
+_SHOW_HINTS = {
+    "電影", "影集", "韓劇", "日劇", "陸劇", "台劇", "美劇",
+    "動漫", "動畫", "漫畫", "Netflix", "netflix", "Disney",
+    "綜藝", "節目", "紀錄片", "影片", "預告",
+}
+_MUSIC_HINTS = {
+    "歌", "曲", "專輯", "演唱會", "音樂", "樂團", "歌手",
+    "Spotify", "spotify", "KKBOX", "kkbox", "YouTube", "youtube",
+    "MV", "mv", "播放", "旋律",
+}
+_ACTIVITY_HINTS = {
+    "逛街", "看電影", "散步", "跑步", "健身", "游泳", "爬山",
+    "旅行", "出國", "露營", "野餐", "唱歌", "KTV", "桌遊",
+    "遊戲", "打球", "瑜珈", "騎車", "開車", "搭車",
+    "購物", "買東西", "約會", "聚餐", "慶祝",
+}
+
+_CATEGORIES = [
+    ("愛去的地方", _PLACE_HINTS),
+    ("愛吃的東西", _FOOD_HINTS),
+    ("愛看的劇", _SHOW_HINTS),
+    ("愛聽的音樂", _MUSIC_HINTS),
+    ("常一起做的事", _ACTIVITY_HINTS),
+]
+
+
+def _categorize_word(word: str) -> str | None:
+    """Return category name if word matches any hint, else None."""
+    for category, hints in _CATEGORIES:
+        if word in hints:
+            return category
+        for hint in hints:
+            if len(hint) >= 2 and hint in word:
+                return category
+            if len(word) >= 2 and word.endswith(hint) and len(hint) == 1:
+                return category
+    return None
+
+
+def _extract_shared_interests(
+    all_words_by_person: dict[str, Counter], persons: list[str]
+) -> list[dict]:
+    """Extract shared interests from word frequency data."""
+    if len(persons) < 2:
+        return []
+
+    p1, p2 = persons[0], persons[1]
+    # Merge both persons' word counts
+    combined = Counter()
+    for w in set(all_words_by_person[p1]) | set(all_words_by_person[p2]):
+        combined[w] = all_words_by_person[p1].get(w, 0) + all_words_by_person[p2].get(w, 0)
+
+    # Categorize words
+    categorized: dict[str, list[tuple[str, int]]] = {}
+    for word, count in combined.most_common(500):
+        cat = _categorize_word(word)
+        if cat:
+            if cat not in categorized:
+                categorized[cat] = []
+            if len(categorized[cat]) < 5:
+                categorized[cat].append((word, count))
+
+    # Build result in fixed category order
+    result = []
+    for cat_name, _ in _CATEGORIES:
+        items = categorized.get(cat_name, [])
+        if items:
+            result.append({
+                "category": cat_name,
+                "items": [{"name": w, "count": c} for w, c in items],
+            })
+
+    return result
+
+
+def merge_shared_interests(
+    jieba_interests: list[dict], ai_interests: list | None
+) -> list[dict]:
+    """Merge jieba keyword-based and AI-extracted shared interests.
+
+    jieba provides {category, items: [{name, count}]} with frequency counts.
+    AI provides {category, items: [str]} with richer context but no counts.
+    Result: deduplicated, jieba items first (with counts), AI-only items appended.
+    """
+    if not ai_interests:
+        return jieba_interests
+
+    # Index jieba results by category
+    merged: dict[str, dict[str, int | None]] = {}
+    category_order: list[str] = []
+
+    for entry in jieba_interests:
+        cat = entry["category"]
+        if cat not in merged:
+            merged[cat] = {}
+            category_order.append(cat)
+        for item in entry.get("items", []):
+            if isinstance(item, dict):
+                merged[cat][item["name"]] = item.get("count")
+            else:
+                merged[cat][str(item)] = None
+
+    # Merge AI results
+    for entry in ai_interests:
+        cat = entry.get("category", "")
+        if not cat:
+            continue
+        if cat not in merged:
+            merged[cat] = {}
+            category_order.append(cat)
+        for item in entry.get("items", []):
+            name = item["name"] if isinstance(item, dict) else str(item)
+            if name not in merged[cat]:
+                merged[cat][name] = item.get("count") if isinstance(item, dict) else None
+
+    # Build final list, cap 8 items per category
+    result = []
+    for cat in category_order:
+        items = merged[cat]
+        if not items:
+            continue
+        sorted_items = sorted(
+            items.items(),
+            key=lambda x: (x[1] is not None, x[1] or 0),
+            reverse=True,
+        )
+        result.append({
+            "category": cat,
+            "items": [
+                {"name": n, "count": c} if c is not None else {"name": n}
+                for n, c in sorted_items[:8]
+            ],
+        })
+
+    return result
+
 
 def compute_text_analysis(parsed: dict) -> dict:
     messages: list[Message] = parsed["messages"]
@@ -153,7 +304,10 @@ def compute_text_analysis(parsed: dict) -> dict:
     else:
         unique_phrases = []
 
+    shared_interests = _extract_shared_interests(all_words_by_person, persons)
+
     return {
         "wordCloud": word_cloud,
         "uniquePhrases": unique_phrases,
+        "sharedInterests": shared_interests,
     }

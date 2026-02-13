@@ -13,7 +13,7 @@ from app.services.cold_war import detect_cold_wars
 from app.services.parser import parse_line_chat
 from app.services.reply_analysis import compute_reply_behavior
 from app.services.stats import compute_basic_stats
-from app.services.text_analysis import compute_text_analysis
+from app.services.text_analysis import compute_text_analysis, merge_shared_interests
 from app.services.time_patterns import compute_time_patterns
 
 logger = logging.getLogger(__name__)
@@ -96,6 +96,13 @@ async def analyze(
 
     del parsed
     gc.collect()
+
+    # Merge jieba + AI shared interests
+    if ai_result:
+        ai_si = ai_result.pop("sharedInterests", None)
+        text_analysis["sharedInterests"] = merge_shared_interests(
+            text_analysis.get("sharedInterests", []), ai_si
+        )
 
     result = {
         "persons": persons,
@@ -201,7 +208,12 @@ async def analyze_stream(
         del parsed
         gc.collect()
 
+        # Merge jieba + AI shared interests
         if ai_result:
+            ai_si = ai_result.pop("sharedInterests", None)
+            result["textAnalysis"]["sharedInterests"] = merge_shared_interests(
+                result["textAnalysis"].get("sharedInterests", []), ai_si
+            )
             result["aiAnalysis"] = ai_result
 
         final_event: dict = {"progress": 100, "stage": "完成！", "result": result}
