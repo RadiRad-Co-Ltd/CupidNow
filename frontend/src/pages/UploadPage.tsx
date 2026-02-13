@@ -83,7 +83,7 @@ export function UploadPage({ onResult }: Props) {
       <main className="mx-auto flex max-w-2xl flex-col items-center gap-6 sm:gap-8 px-4 pt-8 sm:pt-16">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-soft px-4 py-1 text-sm font-semibold text-rose-primary">
           <Sparkles className="h-4 w-4" />
-          Powered by AI Analysis
+          我們重視你的隱私，請避免上傳個人敏感資訊
         </span>
         <h1 className="text-center font-heading text-3xl sm:text-4xl md:text-5xl font-extrabold leading-tight text-text-primary">
           用數據，看見心動的溫度

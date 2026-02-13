@@ -106,7 +106,7 @@ export function DashboardPage({ result }: Props) {
           </span>
         </div>
         <span className="font-body text-[10px] sm:text-[12px] text-white/50 text-center">
-          Powered by Claude AI · HTTPS 加密 · 分析完即刪除
+          HTTPS 加密傳輸 · 分析完即刪除 · 不留存任何對話內容
         </span>
       </footer>
     </div>
