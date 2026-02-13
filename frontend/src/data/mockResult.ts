@@ -118,7 +118,7 @@ export const mockResult: AnalysisResult = {
     loveScore: {
       score: 87,
       comment:
-        "你們的對話充滿默契與火花，秒回率極高，深夜時光更是拉近距離的關鍵。",
+        "你們的對話充滿默契與火花，每天的秒回率都高得驚人，尤其是深夜時段根本停不下來！從聊天節奏來看，小美總是那個先開話題的人，而阿明雖然偶爾慢半拍，但每次回覆都認真又暖心。這對組合根本是「妳負責撒嬌，他負責寵」的最佳範本啦～",
     },
     sentiment: {
       sweet: 38,
@@ -153,10 +153,10 @@ export const mockResult: AnalysisResult = {
     insight:
       "你們的對話以正面情緒為主基調，日常分享佔了很大比例，代表彼此在對方生活中越來越重要。摩擦比例極低（僅 4%），而且每次低潮都能很快回溫，說明你們的互動品質很高。",
     sharedInterests: [
-      { category: "愛去的地方", items: ["信義區", "淡水老街", "陽明山", "貓空"] },
-      { category: "愛吃的東西", items: ["拉麵", "火鍋", "珍奶", "滷肉飯"] },
-      { category: "愛看的劇", items: ["黑暗榮耀", "想見你", "華燈初上"] },
-      { category: "常一起做的事", items: ["逛街", "看電影", "打遊戲", "散步"] },
+      { category: "愛去的地方", items: [{ name: "信義區", count: 42 }, { name: "淡水老街", count: 28 }, { name: "陽明山", count: 19 }, { name: "貓空", count: 12 }] },
+      { category: "愛吃的東西", items: [{ name: "拉麵", count: 35 }, { name: "火鍋", count: 31 }, { name: "珍奶", count: 24 }, { name: "滷肉飯", count: 18 }] },
+      { category: "愛看的劇", items: [{ name: "黑暗榮耀", count: 15 }, { name: "想見你", count: 12 }, { name: "華燈初上", count: 8 }] },
+      { category: "常一起做的事", items: [{ name: "逛街", count: 38 }, { name: "看電影", count: 27 }, { name: "打遊戲", count: 22 }, { name: "散步", count: 15 }] },
     ],
     advice: [
       "小美的回覆速度很快，但有時候可以慢一拍，讓對方多主動一點，別讓自己太累！",

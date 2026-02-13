@@ -127,6 +127,18 @@ def _format_stats_block(stats: dict | None) -> str:
         else:
             lines.append("冷戰/低潮期：0 次")
 
+    if "textAnalysis" in stats:
+        ta = stats["textAnalysis"]
+        wc = ta.get("wordCloud", {})
+        if wc:
+            lines.append("")
+            lines.append("── 雙方高頻詞（已去除停用詞，含出現次數）──")
+            for person, words in wc.items():
+                top = words[:30]
+                if top:
+                    items = ", ".join(f"{w['word']}({w['count']})" for w in top)
+                    lines.append(f"{person}：{items}")
+
     return chr(10).join(lines)
 
 
@@ -158,7 +170,7 @@ def build_prompt(messages: list[Message], persons: list[str], stats: dict | None
 
 注意：
 1. 如果判斷為長期穩定交往或老夫老妻，日常瑣事多、甜度低是正常的，不要因此給低分。但如果連基本的關心和互動都很少，可以給出讓彼此感情加溫的具體建議。
-2. sharedInterests 請從對話中挖掘他們聊過的地點、美食、影劇、音樂、共同活動等。只列對話中實際提到的內容，沒提到的類別就省略不要硬湊。每個類別最多列 5 項。
+2. sharedInterests 請結合「雙方高頻詞」和對話內容，找出他們常提到的地點、美食、影劇、音樂/歌手、共同活動等。優先挑高頻詞裡出現次數多的，按次數排名。只列對話中實際提到的內容，沒提到的類別就省略不要硬湊。每個類別最多列 5 項，附上提及次數。
 3. 評分時請同時參考下方的量化數據，例如秒回率高代表主動性強、已讀不回多代表可能有冷淡傾向、通話頻繁代表感情較親密。
 
 {stats_block}
@@ -182,7 +194,7 @@ def build_prompt(messages: list[Message], persons: list[str], stats: dict | None
       默契度（約 20%）：回覆速度、話題銜接順暢度、互相呼應的程度
       衝突修復力（約 15%）：吵架或冷淡後多快回溫、有沒有主動破冰
     >,
-    "comment": "<50 字以內的活潑評語，像閨蜜在旁邊幫你分析對方的語氣，根據關係階段給出不同風格的點評（曖昧期可以俏皮，老夫老妻可以溫馨）>"
+    "comment": "<80-120 字的活潑評語，2-3 句話。像閨蜜在旁邊幫你分析，第一句點出你們的互動特色或亮點，第二句具體描述一個讓人印象深刻的互動模式，第三句給出一句暖心或俏皮的總結。根據關係階段給出不同風格的點評（曖昧期可以俏皮，老夫老妻可以溫馨）>"
   }},
   "sentiment": {{
     "sweet": <甜蜜撒嬌佔比 0-100>,
@@ -210,11 +222,11 @@ def build_prompt(messages: list[Message], persons: list[str], stats: dict | None
   }},
   "insight": "<100 字以內，用活潑的語氣描述 {p1} 和 {p2} 的關係階段和互動模式。曖昧期可以分析誰在追誰、放電濃度；穩定期可以分析默契程度、有沒有陷入公式化聊天>",
   "sharedInterests": [
-    {{"category": "<類別名稱，例如：愛去的地方>", "items": ["<項目1>", "<項目2>", "..."]}},
-    {{"category": "<類別名稱，例如：愛吃的東西>", "items": ["<項目1>", "<項目2>", "..."]}},
-    {{"category": "<類別名稱，例如：愛看的劇/電影>", "items": ["..."]}},
-    {{"category": "<類別名稱，例如：愛聽的音樂>", "items": ["..."]}},
-    {{"category": "<類別名稱，例如：常一起做的事>", "items": ["..."]}}
+    {{"category": "<類別名稱，例如：愛去的地方>", "items": [{{"name": "<地名>", "count": <提及次數>}}, ...]}},
+    {{"category": "<類別名稱，例如：愛吃的東西>", "items": [{{"name": "<食物>", "count": <次數>}}, ...]}},
+    {{"category": "<類別名稱，例如：愛看的劇/電影>", "items": [{{"name": "<劇名>", "count": <次數>}}, ...]}},
+    {{"category": "<類別名稱，例如：愛聽的音樂/歌手>", "items": [{{"name": "<歌手或歌>", "count": <次數>}}, ...]}},
+    {{"category": "<類別名稱，例如：常一起做的事>", "items": [{{"name": "<活動>", "count": <次數>}}, ...]}}
   ],
   "advice": [
     "<一句具體的聊天建議，針對 {p1}，可以是正面鼓勵也可以是善意提醒。穩定交往的話可以建議怎麼讓對話更有溫度、製造小驚喜>",

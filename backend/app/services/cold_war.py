@@ -7,7 +7,7 @@ from app.services.parser import Message
 def detect_cold_wars(
     parsed: dict,
     drop_threshold: float = 0.65,
-    min_days: int = 2,
+    min_days: int = 7,
     baseline_window: int = 30,
 ) -> list[dict]:
     """Detect periods where message volume drops significantly.

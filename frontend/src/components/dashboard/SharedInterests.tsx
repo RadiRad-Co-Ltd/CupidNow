@@ -1,5 +1,5 @@
 import { MapPin, UtensilsCrossed, Film, Music, Users, type LucideIcon } from "lucide-react";
-import type { AnalysisResult } from "../../types/analysis";
+import type { AnalysisResult, SharedInterestItem } from "../../types/analysis";
 
 interface Props {
   result: AnalysisResult;
@@ -23,6 +23,11 @@ function getStyle(category: string) {
   return FALLBACK_STYLE;
 }
 
+function normalizeItem(item: string | SharedInterestItem): { name: string; count?: number } {
+  if (typeof item === "string") return { name: item };
+  return { name: item.name, count: item.count };
+}
+
 export function SharedInterests({ result }: Props) {
   const interests = result.aiAnalysis?.sharedInterests;
   if (!interests || interests.length === 0) return null;
@@ -37,6 +42,7 @@ export function SharedInterests({ result }: Props) {
         {interests.map((interest) => {
           const style = getStyle(interest.category);
           const IconComp = style.icon;
+          const items = interest.items.map(normalizeItem);
           return (
             <div
               key={interest.category}
@@ -51,12 +57,15 @@ export function SharedInterests({ result }: Props) {
                 </span>
               </div>
               <div className="flex flex-wrap gap-2">
-                {interest.items.map((item) => (
+                {items.map((item) => (
                   <span
-                    key={item}
-                    className={`inline-flex rounded-full px-3 py-1.5 font-body text-[13px] font-medium ${style.bg} ${style.color}`}
+                    key={item.name}
+                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 font-body text-[13px] font-medium ${style.bg} ${style.color}`}
                   >
-                    {item}
+                    {item.name}
+                    {item.count != null && (
+                      <span className="opacity-60 text-[11px]">{item.count}次</span>
+                    )}
                   </span>
                 ))}
               </div>

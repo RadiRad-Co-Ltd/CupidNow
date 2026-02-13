@@ -70,7 +70,12 @@ export interface AIAnalysis {
 
 export interface SharedInterest {
   category: string;
-  items: string[];
+  items: SharedInterestItem[] | string[];
+}
+
+export interface SharedInterestItem {
+  name: string;
+  count: number;
 }
 
 interface Quote {

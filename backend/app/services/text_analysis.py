@@ -97,7 +97,12 @@ STOP_WORDS = {
     # ── LINE system text ──
     "收回", "訊息", "已讀", "貼圖", "圖片", "影片", "檔案",
     "通話", "語音", "相簿", "記事本", "傳送",
+    # ── URL fragments ──
+    "http", "https", "www", "com", "tw", "org", "net", "io",
+    "html", "php", "aspx", "htm",
 }
+
+_URL_RE = re.compile(r"https?://\S+|www\.\S+", re.IGNORECASE)
 
 
 def compute_text_analysis(parsed: dict) -> dict:
@@ -109,7 +114,7 @@ def compute_text_analysis(parsed: dict) -> dict:
 
     for p in persons:
         texts = [m.content for m in messages if m.sender == p and m.msg_type == "text"]
-        combined = " ".join(texts)
+        combined = _URL_RE.sub("", " ".join(texts))
         words = jieba.lcut(combined)
         # Filter: length >= 2, not stop words, not pure punctuation/numbers,
         # not repeated single character (e.g. 哈哈哈哈哈, 嗯嗯嗯嗯)
