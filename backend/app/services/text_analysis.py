@@ -121,10 +121,19 @@ _ACTIVITY_WORDS: set[str] = set()
 
 # Generic words to exclude even if they match a category
 _BORING_WORDS = {
+    # 日常動作
     "吃飯", "逛街", "買東西", "回家", "出門", "出去", "上班", "下班",
     "上課", "下課", "睡覺", "起床", "走路", "開車", "騎車", "搭車",
     "聊天", "拍照", "購物", "打電話", "傳訊息", "看影片",
     "早餐", "午餐", "晚餐", "白飯", "喝水",
+    # Generic 分類詞（不是具體興趣）
+    "韓劇", "日劇", "陸劇", "台劇", "美劇", "追劇", "看劇",
+    "電影", "看電影", "動漫", "動畫", "漫畫", "綜藝", "紀錄片",
+    "唱歌", "音樂", "聽歌", "聽音樂", "歌手", "樂團",
+    "散步", "跑步", "運動", "旅行", "旅遊", "出國",
+    "約會", "聚餐", "健身", "游泳", "騎車", "騎腳踏車",
+    "料理", "下廚", "煮飯", "烘焙",
+    "遊戲", "玩遊戲", "打電動", "手遊",
 }
 
 _word_to_category: dict[str, str] = {}
@@ -348,7 +357,14 @@ def merge_shared_interests(
             else:
                 merged[cat][str(item)] = None
 
-    # Merge AI results
+    # Merge AI results (filter out generic category words the AI might still produce)
+    _ai_reject = {
+        "韓劇", "日劇", "陸劇", "台劇", "美劇", "追劇", "看劇",
+        "電影", "看電影", "動漫", "動畫", "漫畫", "綜藝", "紀錄片",
+        "唱歌", "音樂", "聽歌", "聽音樂", "歌手", "樂團",
+        "散步", "跑步", "運動", "旅行", "旅遊", "出國",
+        "約會", "聚餐", "健身", "游泳", "甜點", "飲料", "咖啡",
+    }
     for entry in ai_interests:
         cat = entry.get("category", "")
         if not cat:
@@ -358,6 +374,8 @@ def merge_shared_interests(
             category_order.append(cat)
         for item in entry.get("items", []):
             name = item["name"] if isinstance(item, dict) else str(item)
+            if name in _ai_reject:
+                continue
             if name not in merged[cat]:
                 merged[cat][name] = item.get("count") if isinstance(item, dict) else None
 
