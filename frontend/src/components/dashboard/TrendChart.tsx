@@ -139,7 +139,7 @@ export function TrendChart({ result }: Props) {
             聊天頻率趨勢
           </h3>
           <p className="font-body text-[13px] text-text-secondary">
-            隨時間演進的訊息量變化 — 粉色為她、紫色為他
+            隨時間演進的訊息量變化 — 粉色為 {p1}、紫色為 {p2}
           </p>
         </div>
         <div className="flex shrink-0 rounded-xl p-1" style={{ backgroundColor: "#F3E8EE" }}>
@@ -227,18 +227,18 @@ export function TrendChart({ result }: Props) {
       <div className="mt-5 flex items-center justify-center gap-6">
         <div className="flex items-center gap-2">
           <span className="inline-block h-3 w-3 rounded-md" style={{ backgroundColor: "#E8457E" }} />
-          <span className="font-body text-[13px] font-semibold text-text-secondary">她的訊息量</span>
+          <span className="font-body text-[13px] font-semibold text-text-secondary">{p1} 的訊息量</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="inline-block h-3 w-3 rounded-md" style={{ backgroundColor: "#9F7AEA" }} />
-          <span className="font-body text-[13px] font-semibold text-text-secondary">他的訊息量</span>
+          <span className="font-body text-[13px] font-semibold text-text-secondary">{p2} 的訊息量</span>
         </div>
       </div>
 
       {/* AI Insight */}
       <div className="mt-4 sm:mt-5 rounded-[14px] px-3 py-3 sm:px-5 sm:py-4">
         <p className="font-body text-[12px] sm:text-[13px] font-medium text-text-primary">
-          AI 洞察｜{peakLabel}是你們的升溫期！訊息量是初期的 {ratio} 倍，她的秒回率也在這段時間達到最高的 72%
+          AI 洞察｜{peakLabel}是你們的升溫期！訊息量是初期的 {ratio} 倍
         </p>
       </div>
     </div>

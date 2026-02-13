@@ -36,10 +36,10 @@ def test_type_breakdown():
 def test_call_stats():
     result = compute_basic_stats(_parsed())
     cs = result["callStats"]
-    assert cs["totalCalls"] == 2
-    assert cs["completedCalls"] == 1
+    assert cs["totalCalls"] == 3
+    assert cs["completedCalls"] == 2
     assert cs["missedCalls"] == 1
-    assert cs["totalDurationSeconds"] == 332
+    assert cs["totalDurationSeconds"] == 332 + 5025
 
 
 def test_date_range():
@@ -52,10 +52,12 @@ def test_date_range():
 def test_person_balance():
     result = compute_basic_stats(_parsed())
     bal = result["personBalance"]
-    assert "messages" in bal
-    assert "words" in bal
-    # Each has person1, person2 with percentage
-    assert bal["messages"]["小美"]["percent"] > 0
+    # Structure: bal[person][metric] = {count, percent}
+    assert "小美" in bal
+    assert "阿明" in bal
+    assert bal["小美"]["text"]["percent"] > 0
+    assert bal["小美"]["call"]["count"] == 1
+    assert bal["阿明"]["call"]["count"] == 2
 
 
 def test_empty_messages():

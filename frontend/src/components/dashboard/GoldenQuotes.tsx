@@ -73,7 +73,7 @@ export function GoldenQuotes({ result }: Props) {
               {/* Attribution */}
               {quote && (
                 <span className="font-body text-[13px] text-text-muted">
-                  — {quote.sender === result.persons[0] ? "她" : "他"}，{quote.date}
+                  — {quote.sender}，{quote.date}
                 </span>
               )}
             </div>

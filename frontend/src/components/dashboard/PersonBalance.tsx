@@ -85,12 +85,12 @@ export function PersonBalance({ result }: Props) {
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="inline-block h-3 w-3 rounded-full bg-rose-primary" />
-            <span className="font-body text-[15px] font-bold text-rose-primary">她</span>
+            <span className="font-body text-[15px] font-bold text-rose-primary">{person1}</span>
           </div>
           <span className="font-heading text-[14px] font-semibold text-text-muted">vs</span>
           <div className="flex items-center gap-2">
             <span className="inline-block h-3 w-3 rounded-full bg-purple-accent" />
-            <span className="font-body text-[15px] font-bold text-purple-accent">他</span>
+            <span className="font-body text-[15px] font-bold text-purple-accent">{person2}</span>
           </div>
         </div>
 

@@ -40,7 +40,7 @@ export function ReplyBehavior({ result }: Props) {
   const himTopics = replyBehavior.topicInitiator[person2] ?? 0;
   const totalTopics = herTopics + himTopics;
   const topicPct = totalTopics > 0 ? Math.round((herTopics / totalTopics) * 100) : 50;
-  const topicLeader = herTopics >= himTopics ? "她" : "他";
+  const topicLeader = herTopics >= himTopics ? person1 : person2;
 
   return (
     <section className="bg-white px-4 py-8 sm:px-8 md:px-12 md:py-12 lg:px-20">
@@ -60,7 +60,7 @@ export function ReplyBehavior({ result }: Props) {
               {/* Her bar */}
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-body text-[13px] font-semibold text-text-primary">她</span>
+                  <span className="font-body text-[13px] font-semibold text-text-primary">{person1}</span>
                   <span className="font-body text-[13px] font-bold text-rose-primary">{her}%</span>
                 </div>
                 <div className="h-3 w-full overflow-hidden rounded-full bg-rose-soft">
@@ -73,7 +73,7 @@ export function ReplyBehavior({ result }: Props) {
               {/* Him bar */}
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-body text-[13px] font-semibold text-text-primary">他</span>
+                  <span className="font-body text-[13px] font-semibold text-text-primary">{person2}</span>
                   <span className="font-body text-[13px] font-bold text-purple-accent">{him}%</span>
                 </div>
                 <div className="h-3 w-full overflow-hidden rounded-full" style={{ backgroundColor: "#EDE4F5" }}>
@@ -94,7 +94,7 @@ export function ReplyBehavior({ result }: Props) {
               </span>
               <span className="font-body text-[13px] font-medium text-text-secondary">話題發起次數</span>
               <span className="font-body text-[12px] font-medium text-text-muted">
-                她 {herTopics} · 他 {himTopics}
+                {person1} {herTopics} · {person2} {himTopics}
               </span>
             </div>
             <div className="flex flex-col items-center justify-center gap-2 rounded-[16px] sm:rounded-[20px] border border-border-light bg-white p-4 sm:p-6">
@@ -146,7 +146,7 @@ export function ReplyBehavior({ result }: Props) {
                 {fmtCompact(replyBehavior.avgReplyTime[person1] ?? 0)}
               </span>
               <span className="font-body text-[13px] font-medium text-text-secondary">
-                她的平均回覆
+                {person1} 的平均回覆
               </span>
             </div>
             <div className="flex flex-col items-center justify-center gap-2 rounded-[16px] sm:rounded-[20px] border border-border-light bg-white p-4 sm:p-6">
@@ -154,7 +154,7 @@ export function ReplyBehavior({ result }: Props) {
                 {fmtCompact(replyBehavior.avgReplyTime[person2] ?? 0)}
               </span>
               <span className="font-body text-[13px] font-medium text-text-secondary">
-                他的平均回覆
+                {person2} 的平均回覆
               </span>
             </div>
           </div>

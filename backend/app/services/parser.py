@@ -14,12 +14,14 @@ class Message:
 @dataclass
 class CallRecord:
     timestamp: datetime
+    caller: str  # who initiated the call
     duration_seconds: int  # 0 = missed call
 
 
 DATE_HEADER_RE = re.compile(r"^(\d{4}/\d{1,2}/\d{1,2})（[一二三四五六日]）\s*$")
 MSG_LINE_RE = re.compile(r"^(\d{1,2}:\d{2})\t(.+?)\t(.*)$")
-CALL_LINE_RE = re.compile(r"^(\d{1,2}:\d{2})\t☎\s*(.+)$")
+CALL_LINE_2COL_RE = re.compile(r"^(\d{1,2}:\d{2})\t☎\s*(.+)$")
+CALL_LINE_3COL_RE = re.compile(r"^(\d{1,2}:\d{2})\t(.+?)\t☎\s*(.+)$")
 CALL_DURATION_RE = re.compile(r"通話時間\s*(?:(\d+):)?(\d{1,2}):(\d{2})")
 
 TYPE_MARKERS = {
@@ -36,7 +38,7 @@ def _detect_type(content: str) -> str:
 
 
 def _parse_call_duration(text: str) -> int:
-    if "未接來電" in text or "已取消" in text:
+    if "未接來電" in text or "已取消" in text or "未接" in text:
         return 0
     m = CALL_DURATION_RE.search(text)
     if not m:
@@ -65,17 +67,36 @@ def parse_line_chat(text: str) -> dict:
         if current_date is None:
             continue
 
-        # Try call line
-        cm = CALL_LINE_RE.match(line)
-        if cm:
-            time_str = cm.group(1)
-            call_text = cm.group(2)
+        # Try call line — 3-col format: time\tsender\t☎ text
+        cm3 = CALL_LINE_3COL_RE.match(line)
+        if cm3:
+            time_str = cm3.group(1)
+            caller = cm3.group(2)
+            call_text = cm3.group(3)
+            ts = datetime.combine(
+                current_date,
+                datetime.strptime(time_str, "%H:%M").time(),
+            )
+            persons.add(caller)
+            calls.append(CallRecord(
+                timestamp=ts,
+                caller=caller,
+                duration_seconds=_parse_call_duration(call_text),
+            ))
+            continue
+
+        # Try call line — 2-col format: time\t☎ text
+        cm2 = CALL_LINE_2COL_RE.match(line)
+        if cm2:
+            time_str = cm2.group(1)
+            call_text = cm2.group(2)
             ts = datetime.combine(
                 current_date,
                 datetime.strptime(time_str, "%H:%M").time(),
             )
             calls.append(CallRecord(
                 timestamp=ts,
+                caller="",
                 duration_seconds=_parse_call_duration(call_text),
             ))
             continue

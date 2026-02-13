@@ -29,8 +29,7 @@ function getTopPersonWithPercent(record: Record<string, number>): string {
   const sorted = entries.sort((a, b) => b[1] - a[1]);
   const [topPerson, topCount] = sorted[0];
   const pct = Math.round((topCount / total) * 100);
-  const label = topPerson === entries[0][0] ? "她" : "他";
-  return `${label}先說 ${pct}%`;
+  return `${topPerson}先說 ${pct}%`;
 }
 
 export function GoodnightAnalysis({ result }: Props) {

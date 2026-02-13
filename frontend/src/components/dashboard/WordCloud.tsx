@@ -26,7 +26,7 @@ export function WordCloud({ result }: Props) {
   const { persons } = result;
   const { wordCloud, uniquePhrases } = result.textAnalysis;
   const topPhrases = uniquePhrases.slice(0, 5);
-  const labels = ["她的高頻詞", "他的高頻詞"];
+  const labels = persons.map((p) => `${p} 的高頻詞`);
 
   return (
     <section className="w-full bg-bg-blush px-4 py-8 sm:px-8 md:px-12 md:py-12 lg:px-20">

@@ -47,11 +47,16 @@ def test_parse_photo_detected():
 def test_parse_call_records():
     text = FIXTURE.read_text(encoding="utf-8")
     result = parse_line_chat(text)
-    assert len(result["calls"]) == 2
-    # First call has duration
+    assert len(result["calls"]) == 3
+    # First call: 3-col format with duration 5:32
+    assert result["calls"][0].caller == "小美"
     assert result["calls"][0].duration_seconds == 332  # 5*60 + 32
-    # Second call is missed
+    # Second call: missed
+    assert result["calls"][1].caller == "阿明"
     assert result["calls"][1].duration_seconds == 0
+    # Third call: 1:23:45
+    assert result["calls"][2].caller == "阿明"
+    assert result["calls"][2].duration_seconds == 5025  # 1*3600 + 23*60 + 45
 
 
 def test_parse_identifies_persons():

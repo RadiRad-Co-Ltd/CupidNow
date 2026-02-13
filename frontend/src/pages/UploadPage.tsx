@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Sparkles, ShieldCheck, Trash2, EyeOff, UserX } from "lucide-react";
+import { Heart, Sparkles, ShieldCheck, Trash2, EyeOff, UserX } from "lucide-react";
 import { FileDropzone } from "../components/FileDropzone";
 import type { AnalysisResult } from "../types/analysis";
 
@@ -73,7 +73,10 @@ export function UploadPage({ onResult }: Props) {
     <div className="min-h-screen bg-bg-page">
       <header className="flex items-center justify-between px-4 sm:px-8 lg:px-20 py-4 sm:py-5">
         <div className="flex items-center gap-2">
-          <img src="/logo.png" alt="CupidNow" className="h-10" />
+          <Heart className="h-6 w-6 text-rose-primary" />
+          <span className="font-heading text-xl font-extrabold text-text-primary">
+            CupidNow
+          </span>
         </div>
       </header>
 

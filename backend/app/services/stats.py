@@ -45,24 +45,32 @@ def compute_basic_stats(parsed: dict) -> dict:
         start = end = None
         total_days = 0
 
-    # Person balance
+    # Per-person metrics
+    def _count_type(person: str, msg_type: str) -> int:
+        return len([m for m in messages if m.sender == person and m.msg_type == msg_type])
+
+    def _call_count(person: str) -> int:
+        return len([c for c in calls if c.caller == person])
+
     total_msgs = msg_counts["total"] or 1
     total_words = word_counts["total"] or 1
+    total_stickers = max(type_counts.get("sticker", 0), 1)
+    total_photos = max(type_counts.get("photo", 0), 1)
+    total_calls = max(len(calls), 1)
 
-    def _balance(metric: dict, total: int) -> dict:
-        return {
-            p: {"count": metric[p], "percent": round(metric[p] / total * 100, 1)}
-            for p in persons
+    # Structure: personBalance[person][metric] = {count, percent}
+    person_balance = {}
+    for p in persons:
+        sticker_count = _count_type(p, "sticker")
+        photo_count = _count_type(p, "photo")
+        call_count = _call_count(p)
+        person_balance[p] = {
+            "text": {"count": msg_counts[p], "percent": round(msg_counts[p] / total_msgs * 100, 1)},
+            "word": {"count": word_counts[p], "percent": round(word_counts[p] / total_words * 100, 1)},
+            "sticker": {"count": sticker_count, "percent": round(sticker_count / total_stickers * 100, 1)},
+            "photo": {"count": photo_count, "percent": round(photo_count / total_photos * 100, 1)},
+            "call": {"count": call_count, "percent": round(call_count / total_calls * 100, 1)},
         }
-
-    person_balance = {
-        "messages": _balance(msg_counts, total_msgs),
-        "words": _balance(word_counts, total_words),
-        "stickers": _balance(
-            {p: len([m for m in messages if m.sender == p and m.msg_type == "sticker"]) for p in persons},
-            max(type_counts.get("sticker", 0), 1),
-        ),
-    }
 
     return {
         "messageCount": msg_counts,

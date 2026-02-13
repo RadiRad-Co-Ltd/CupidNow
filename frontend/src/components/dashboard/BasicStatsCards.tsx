@@ -33,14 +33,14 @@ export function BasicStatsCards({ result }: Props) {
 
   const herStickers = (result.basicStats.personBalance[persons[0]]?.sticker?.count ?? 0);
   const himStickers = (result.basicStats.personBalance[persons[1]]?.sticker?.count ?? 0);
-  const stickerWinner = herStickers >= himStickers ? "她" : "他";
+  const stickerWinner = herStickers >= himStickers ? persons[0] : persons[1];
 
   const cards: StatCard[] = [
     {
       icon: MessageCircle,
       iconBg: "bg-rose-soft",
       iconColor: "text-rose-primary",
-      badge: `她 ${herPct}% · 他 ${himPct}%`,
+      badge: `${persons[0]} ${herPct}% · ${persons[1]} ${himPct}%`,
       value: messageCount.total ?? 0,
       label: "總訊息數",
     },
