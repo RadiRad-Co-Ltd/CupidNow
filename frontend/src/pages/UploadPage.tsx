@@ -39,8 +39,8 @@ export function UploadPage({ onResult }: Props) {
     setStage(serverReady ? "上傳檔案中..." : "正在喚醒伺服器，首次需要等一下...");
 
     try {
-      if (file.size > 10 * 1024 * 1024) {
-        setError("檔案太大，最大限制 10MB");
+      if (file.size > 20 * 1024 * 1024) {
+        setError("檔案太大，最大限制 20MB");
         setLoading(false);
         return;
       }

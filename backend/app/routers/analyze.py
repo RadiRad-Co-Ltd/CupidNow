@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api")
 
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+MAX_FILE_SIZE = 20 * 1024 * 1024  # 20MB
 
 _rate_store: dict[str, list[float]] = defaultdict(list)
 RATE_LIMIT = 10
@@ -79,7 +79,7 @@ async def analyze(
 
     raw_data = await file.read()
     if len(raw_data) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=413, detail="File too large (max 10MB)")
+        raise HTTPException(status_code=413, detail="File too large (max 20MB)")
 
     try:
         text = raw_data.decode("utf-8")
@@ -139,7 +139,7 @@ async def analyze_stream(
 
     raw_data = await file.read()
     if len(raw_data) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=413, detail="File too large (max 10MB)")
+        raise HTTPException(status_code=413, detail="File too large (max 20MB)")
 
     try:
         text = raw_data.decode("utf-8")

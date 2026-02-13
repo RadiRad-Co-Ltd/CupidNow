@@ -36,7 +36,7 @@ async def test_analyze_invalid_file_returns_400(client):
 
 
 async def test_analyze_oversized_file_returns_413(client):
-    big = b"x" * (11 * 1024 * 1024)
+    big = b"x" * (21 * 1024 * 1024)
     resp = await client.post(
         "/api/analyze",
         data={"skip_ai": "true"},
