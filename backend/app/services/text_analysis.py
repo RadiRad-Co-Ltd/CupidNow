@@ -294,6 +294,50 @@ def _tfidf_score(word: str, tf: int, total_msgs: int) -> float:
     return tf_norm * idf
 
 
+def _extract_shared_interests(
+    all_words_by_person: dict[str, Counter], persons: list[str],
+    total_msgs: int = 0,
+) -> list[dict]:
+    """Extract shared interests using TF-IDF scoring (jieba fallback).
+
+    1. Only words BOTH people mention (truly shared).
+    2. Categorize by explicit word->category lookup (no suffix guessing).
+    3. Rank by TF-IDF: frequent in this chat but rare in general Chinese.
+    """
+    if len(persons) < 2:
+        return []
+
+    _load_interest_words()
+
+    p1, p2 = persons[0], persons[1]
+    shared_words = set(all_words_by_person[p1]) & set(all_words_by_person[p2])
+
+    categorized: dict[str, list[tuple[str, int, float]]] = {}
+    for w in shared_words:
+        if w in _BORING_WORDS or len(w) < 2:
+            continue
+        cat = _word_to_category.get(w)
+        if not cat:
+            continue
+        total = all_words_by_person[p1][w] + all_words_by_person[p2][w]
+        score = _tfidf_score(w, total, total_msgs)
+        if cat not in categorized:
+            categorized[cat] = []
+        categorized[cat].append((w, total, score))
+
+    result = []
+    for cat_name in _CATEGORY_ORDER:
+        items = categorized.get(cat_name, [])
+        if items:
+            items.sort(key=lambda x: x[2], reverse=True)
+            result.append({
+                "category": cat_name,
+                "items": [{"name": w, "count": c} for w, c, _ in items[:6]],
+            })
+
+    return result
+
+
 def build_interest_context(
     all_words_by_person: dict[str, Counter],
     persons: list[str],
@@ -340,12 +384,35 @@ def build_interest_context(
             if len(word_examples[tw]) < 2:
                 word_examples[tw].append(f"{msg.sender}: {msg.content[:60]}")
 
-    # Format as text block for AI prompt
-    lines = ["── 雙方共同提到的獨特詞彙（TF-IDF 排序，含原句）──"]
-    for w, count, _ in top_words[:100]:  # Cap at 100 to stay within token budget
-        examples = word_examples.get(w, [])
-        ex_str = " | ".join(examples) if examples else ""
-        lines.append(f"• {w} ({count}次) → {ex_str}")
+    # Pre-categorize using _word_to_category so AI sees structured hints
+    _load_interest_words()
+    categorized: dict[str, list[tuple[str, int]]] = {}  # cat → [(word, count)]
+    uncategorized: list[tuple[str, int]] = []
+
+    for w, count, score in top_words[:100]:
+        cat = _word_to_category.get(w)
+        if cat and w not in _BORING_WORDS:
+            categorized.setdefault(cat, []).append((w, count))
+        else:
+            uncategorized.append((w, count))
+
+    lines = ["── 以下詞彙請直接放入 sharedInterests 對應類別 ──"]
+    for cat in _CATEGORY_ORDER:
+        items = categorized.get(cat, [])
+        if items:
+            items_str = ", ".join(f"{w}({c}次)" for w, c in items[:8])
+            lines.append(f"【{cat}】{items_str}")
+
+    if uncategorized:
+        # Include example sentences for uncategorized words to help AI judge
+        unc_parts = []
+        for w, c in uncategorized[:30]:
+            examples = word_examples.get(w, [])
+            if examples:
+                unc_parts.append(f"{w}({c}次)→{examples[0]}")
+            else:
+                unc_parts.append(f"{w}({c}次)")
+        lines.append(f"【待分類（請判斷類別）】{', '.join(unc_parts)}")
 
     return "\n".join(lines)
 
@@ -449,7 +516,7 @@ def compute_text_analysis(parsed: dict) -> tuple[dict, str]:
     text_analysis = {
         "wordCloud": word_cloud,
         "uniquePhrases": unique_phrases,
-        "sharedInterests": [],  # Will be filled by AI result
+        "sharedInterests": _extract_shared_interests(all_words_by_person, persons, len(messages)),
         "_word_idf": word_idf,  # Internal: for sample_messages TF-IDF scoring
         "_msg_words": msg_words,  # Internal: per-message word lists
     }

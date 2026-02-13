@@ -109,11 +109,16 @@ async def analyze(
     del parsed, word_idf, msg_words
     gc.collect()
 
-    # Use AI shared interests directly
+    # AI sharedInterests priority + jieba category backfill
     if ai_result:
         ai_si = ai_result.pop("sharedInterests", None)
         if ai_si:
+            ai_cats = {e["category"] for e in ai_si}
+            for entry in text_analysis.get("sharedInterests", []):
+                if entry["category"] not in ai_cats:
+                    ai_si.append(entry)
             text_analysis["sharedInterests"] = ai_si
+        # else: keep jieba sharedInterests as fallback
 
     result = {
         "persons": persons,
@@ -244,11 +249,16 @@ async def analyze_stream(
         del parsed, word_idf, msg_words
         gc.collect()
 
-        # Use AI shared interests directly
+        # AI sharedInterests priority + jieba category backfill
         if ai_result:
             ai_si = ai_result.pop("sharedInterests", None)
             if ai_si:
+                ai_cats = {e["category"] for e in ai_si}
+                for entry in result["textAnalysis"].get("sharedInterests", []):
+                    if entry["category"] not in ai_cats:
+                        ai_si.append(entry)
                 result["textAnalysis"]["sharedInterests"] = ai_si
+            # else: keep jieba sharedInterests as fallback
             result["aiAnalysis"] = ai_result
 
         final_event: dict = {"progress": 100, "stage": "完成！", "result": result}
