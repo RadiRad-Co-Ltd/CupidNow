@@ -1,4 +1,4 @@
-import { Sparkles, Heart, Zap, Coffee, Flame, Moon, BarChart3, type LucideIcon } from "lucide-react";
+import { Sparkles, Heart, Zap, Coffee, Flame, Moon, BarChart3, MessageCircleHeart, MapPin, Lightbulb, Star, type LucideIcon } from "lucide-react";
 import type { AnalysisResult } from "../../types/analysis";
 
 interface Props {
@@ -126,26 +126,51 @@ export function SentimentAnalysis({ result }: Props) {
           <div className="flex flex-col gap-3">
             {advice.map((tip, idx) => {
               const isObj = typeof tip === "object" && tip !== null;
-              const category = isObj ? (tip as { category?: string }).category : undefined;
+              const category = isObj ? (tip as { category?: string }).category ?? "" : "";
               const target = isObj ? (tip as { target?: string }).target : undefined;
               const content = isObj ? (tip as { content?: string }).content ?? "" : String(tip);
+
+              const iconMap: Record<string, LucideIcon> = {
+                "聊天": MessageCircleHeart,
+                "感情": Heart,
+                "約會": MapPin,
+                "默契": Zap,
+                "關係": Star,
+              };
+              const matchKey = Object.keys(iconMap).find((k) => category.includes(k));
+              const Icon = matchKey ? iconMap[matchKey] : Lightbulb;
+              const colors = idx % 2 === 0
+                ? { bg: "#FFF0F3", icon: "#E8457E" }
+                : { bg: "#F3EDF8", icon: "#9F7AEA" };
 
               return (
                 <div
                   key={idx}
-                  className="flex items-start gap-3 rounded-[12px] p-3.5"
-                  style={{ backgroundColor: idx % 2 === 0 ? "#FFF0F3" : "#F3EDF8" }}
+                  className="flex items-start gap-3 rounded-[12px] p-4"
+                  style={{ backgroundColor: colors.bg }}
                 >
-                  <span className="mt-0.5 shrink-0 text-[15px]">
-                    {category ? category.slice(0, 2) : "💡"}
-                  </span>
-                  <div className="flex flex-col gap-0.5">
-                    {target && (
-                      <span className="font-body text-[11px] font-semibold text-text-muted">
-                        {target}
-                      </span>
+                  <div
+                    className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+                    style={{ backgroundColor: colors.icon + "1A" }}
+                  >
+                    <Icon className="h-4 w-4" style={{ color: colors.icon }} />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    {(category || target) && (
+                      <div className="flex items-center gap-2">
+                        {category && (
+                          <span className="font-body text-[12px] font-bold" style={{ color: colors.icon }}>
+                            {category.replace(/^.\s*/, "")}
+                          </span>
+                        )}
+                        {target && (
+                          <span className="font-body text-[11px] font-semibold text-text-muted">
+                            · {target}
+                          </span>
+                        )}
+                      </div>
                     )}
-                    <p className="font-body text-[13px] leading-[1.6] text-text-primary">
+                    <p className="font-body text-[14px] leading-[1.7] text-text-primary">
                       {content}
                     </p>
                   </div>
