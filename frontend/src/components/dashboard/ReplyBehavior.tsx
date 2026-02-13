@@ -1,3 +1,4 @@
+import { MessageSquare, EyeOff } from "lucide-react";
 import type { AnalysisResult } from "../../types/analysis";
 
 interface Props {
@@ -16,31 +17,38 @@ const BAR_STYLES = [
   { label: "<1m", gradient: "linear-gradient(180deg, #E8457E 0%, #F472B6 100%)" },
   { label: "1-5m", gradient: "linear-gradient(180deg, #9F7AEA 0%, #B794F4 100%)" },
   { label: "5-30m", gradient: "linear-gradient(180deg, #F5A623 0%, #FBD38D 100%)" },
-  { label: "30m-1h", gradient: "#38B2AC60" },
-  { label: ">1h", gradient: "#B8ADC740" },
+  { label: "30m-1h", gradient: "linear-gradient(180deg, #38B2AC 0%, #81E6D9 100%)" },
+  { label: ">1h", gradient: "linear-gradient(180deg, #A0AEC0 0%, #CBD5E0 100%)" },
 ];
 
 export function ReplyBehavior({ result }: Props) {
   const { replyBehavior, persons } = result;
   const [person1, person2] = persons;
 
-  // Instant reply rates (already 0-1 range, display as %)
-  const her = Math.round((replyBehavior.instantReplyRate[person1] ?? 0) * 100);
-  const him = Math.round((replyBehavior.instantReplyRate[person2] ?? 0) * 100);
+  // Instant reply rates — backend returns 0-100, use directly
+  const her = Math.round(replyBehavior.instantReplyRate[person1] ?? 0);
+  const him = Math.round(replyBehavior.instantReplyRate[person2] ?? 0);
 
-  // Speed distribution — get values matching BAR_STYLES labels
+  // Speed distribution
   const speedEntries = BAR_STYLES.map((bar) => ({
     ...bar,
     value: replyBehavior.speedDistribution[bar.label] ?? 0,
   }));
-  const maxSpeed = Math.max(...speedEntries.map((e) => e.value), 1);
+  const totalSpeed = speedEntries.reduce((s, e) => s + e.value, 0);
+  const maxSpeedPct = totalSpeed > 0
+    ? Math.max(...speedEntries.map((e) => (e.value / totalSpeed) * 100))
+    : 1;
 
-  // Topic initiator
-  const herTopics = replyBehavior.topicInitiator[person1] ?? 0;
-  const himTopics = replyBehavior.topicInitiator[person2] ?? 0;
-  const totalTopics = herTopics + himTopics;
-  const topicPct = totalTopics > 0 ? Math.round((herTopics / totalTopics) * 100) : 50;
-  const topicLeader = herTopics >= himTopics ? person1 : person2;
+  // Longest streak
+  const streak = replyBehavior.longestStreak;
+  const streakCount = streak?.count ?? 0;
+  const streakDate = streak?.date ?? "";
+
+  // Left on read
+  const lor1 = replyBehavior.leftOnRead?.[person1] ?? 0;
+  const lor2 = replyBehavior.leftOnRead?.[person2] ?? 0;
+  const lorLeader = lor1 >= lor2 ? person1 : person2;
+  const lorCount = Math.max(lor1, lor2);
 
   return (
     <section className="bg-white px-4 py-8 sm:px-8 md:px-12 md:py-12 lg:px-20">
@@ -51,13 +59,13 @@ export function ReplyBehavior({ result }: Props) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* ---- Left Column ---- */}
         <div className="flex flex-col gap-5">
-          {/* Instant reply rate card */}
-          <div className="rounded-[20px] border border-border-light bg-white p-7">
+          {/* Instant reply rate card — flex-1 to match right column height */}
+          <div className="flex-1 rounded-[16px] sm:rounded-[20px] border border-border-light bg-white p-5 sm:p-7 flex flex-col justify-center">
             <h3 className="mb-6 font-heading text-[16px] font-bold text-text-primary">
-              秒回率（60 秒內回覆）
+              秒回率
             </h3>
             <div className="flex flex-col gap-4">
-              {/* Her bar */}
+              {/* Person 1 bar */}
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
                   <span className="font-body text-[13px] font-semibold text-text-primary">{person1}</span>
@@ -66,11 +74,11 @@ export function ReplyBehavior({ result }: Props) {
                 <div className="h-3 w-full overflow-hidden rounded-full bg-rose-soft">
                   <div
                     className="h-full rounded-full bg-rose-primary transition-all duration-500"
-                    style={{ width: `${her}%` }}
+                    style={{ width: `${Math.min(her, 100)}%` }}
                   />
                 </div>
               </div>
-              {/* Him bar */}
+              {/* Person 2 bar */}
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
                   <span className="font-body text-[13px] font-semibold text-text-primary">{person2}</span>
@@ -79,7 +87,7 @@ export function ReplyBehavior({ result }: Props) {
                 <div className="h-3 w-full overflow-hidden rounded-full" style={{ backgroundColor: "#EDE4F5" }}>
                   <div
                     className="h-full rounded-full bg-purple-accent transition-all duration-500"
-                    style={{ width: `${him}%` }}
+                    style={{ width: `${Math.min(him, 100)}%` }}
                   />
                 </div>
               </div>
@@ -88,24 +96,26 @@ export function ReplyBehavior({ result }: Props) {
 
           {/* Fun stats row */}
           <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            {/* Longest streak */}
             <div className="flex flex-col items-center justify-center gap-2 rounded-[16px] sm:rounded-[20px] border border-border-light bg-white p-4 sm:p-6">
-              <span className="font-heading text-[24px] sm:text-[32px] font-extrabold leading-none" style={{ color: "#E87461" }}>
-                {totalTopics}
+              <MessageSquare className="h-5 w-5 text-teal-positive" />
+              <span className="font-heading text-[24px] sm:text-[32px] font-extrabold leading-none text-teal-positive">
+                {streakCount}
               </span>
-              <span className="font-body text-[13px] font-medium text-text-secondary">話題發起次數</span>
-              <span className="font-body text-[12px] font-medium text-text-muted">
-                {person1} {herTopics} · {person2} {himTopics}
+              <span className="font-body text-[13px] font-medium text-text-secondary text-center">最長連續對話</span>
+              <span className="font-body text-[11px] sm:text-[12px] font-medium text-text-muted text-center">
+                {streakDate}
               </span>
             </div>
+            {/* Left on read */}
             <div className="flex flex-col items-center justify-center gap-2 rounded-[16px] sm:rounded-[20px] border border-border-light bg-white p-4 sm:p-6">
-              <span className="font-heading text-[24px] sm:text-[32px] font-extrabold leading-none text-teal-positive">
-                {topicPct}%
+              <EyeOff className="h-5 w-5" style={{ color: "#E87461" }} />
+              <span className="font-heading text-[24px] sm:text-[32px] font-extrabold leading-none" style={{ color: "#E87461" }}>
+                {lorCount}
               </span>
-              <span className="font-body text-[13px] font-medium text-text-secondary">
-                {topicLeader}先開話題
-              </span>
-              <span className="font-body text-[12px] font-medium text-text-muted">
-                沉默後先發訊息
+              <span className="font-body text-[13px] font-medium text-text-secondary text-center">已讀不回次數</span>
+              <span className="font-body text-[11px] sm:text-[12px] font-medium text-text-muted text-center">
+                {lorLeader} 較常已讀不回
               </span>
             </div>
           </div>
@@ -113,25 +123,37 @@ export function ReplyBehavior({ result }: Props) {
 
         {/* ---- Right Column ---- */}
         <div className="flex flex-col gap-5">
-          {/* Speed distribution — custom CSS bars */}
-          <div className="rounded-[20px] border border-border-light bg-white p-7">
+          {/* Speed distribution — flex-1 to match left column height */}
+          <div className="flex-1 rounded-[16px] sm:rounded-[20px] border border-border-light bg-white p-5 sm:p-7 flex flex-col">
             <h3 className="mb-5 font-heading text-[16px] font-bold text-text-primary">
               回覆速度分布
             </h3>
-            <div className="flex items-end gap-3" style={{ height: 180, padding: "0 8px" }}>
+            <div className="flex flex-col gap-3" style={{ padding: "0 4px" }}>
               {speedEntries.map((entry) => {
-                const heightPct = (entry.value / maxSpeed) * 100;
+                const pct = totalSpeed > 0 ? (entry.value / totalSpeed) * 100 : 0;
+                const widthPct = maxSpeedPct > 0 ? (pct / maxSpeedPct) * 100 : 0;
                 return (
-                  <div key={entry.label} className="flex flex-1 flex-col items-center justify-end gap-2 h-full">
-                    <div
-                      className="w-full rounded-t-[10px] rounded-b-[4px] transition-all duration-500"
-                      style={{
-                        height: `${Math.max(heightPct, 5)}%`,
-                        background: entry.gradient,
-                      }}
-                    />
-                    <span className="font-body text-[11px] font-semibold text-text-secondary">
+                  <div key={entry.label} className="flex items-center gap-3">
+                    <span className="w-12 shrink-0 font-body text-[11px] font-semibold text-text-secondary text-right whitespace-nowrap">
                       {entry.label}
+                    </span>
+                    <div className="flex-1 h-6 rounded-full overflow-hidden" style={{ backgroundColor: "#F5F0FA" }}>
+                      <div
+                        className="h-full rounded-full transition-all duration-500 flex items-center justify-end pr-2"
+                        style={{
+                          width: `${Math.max(widthPct, 3)}%`,
+                          background: entry.gradient,
+                        }}
+                      >
+                        {pct >= 8 && (
+                          <span className="font-body text-[10px] font-bold text-white whitespace-nowrap">
+                            {Math.round(pct)}%
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <span className="w-14 shrink-0 font-body text-[11px] font-medium text-text-muted text-left">
+                      {Math.round(pct)}% ({entry.value})
                     </span>
                   </div>
                 );
@@ -145,7 +167,7 @@ export function ReplyBehavior({ result }: Props) {
               <span className="font-heading text-[22px] sm:text-[28px] font-extrabold leading-none text-rose-primary">
                 {fmtCompact(replyBehavior.avgReplyTime[person1] ?? 0)}
               </span>
-              <span className="font-body text-[13px] font-medium text-text-secondary">
+              <span className="font-body text-[13px] font-medium text-text-secondary text-center">
                 {person1} 的平均回覆
               </span>
             </div>
@@ -153,7 +175,7 @@ export function ReplyBehavior({ result }: Props) {
               <span className="font-heading text-[22px] sm:text-[28px] font-extrabold leading-none text-purple-accent">
                 {fmtCompact(replyBehavior.avgReplyTime[person2] ?? 0)}
               </span>
-              <span className="font-body text-[13px] font-medium text-text-secondary">
+              <span className="font-body text-[13px] font-medium text-text-secondary text-center">
                 {person2} 的平均回覆
               </span>
             </div>

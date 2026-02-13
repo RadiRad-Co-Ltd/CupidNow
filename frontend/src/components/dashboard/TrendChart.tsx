@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import type { AnalysisResult } from "../../types/analysis";
 
 interface Props {
@@ -14,37 +14,25 @@ interface BarGroup {
   him: number;
 }
 
-function buildMonthlyGroups(
+function buildDailyGroups(
   trend: Array<Record<string, string | number>>,
   p1: string,
   p2: string,
 ): BarGroup[] {
-  const groups: BarGroup[] = [];
-  let lastYear = "";
-  for (let i = 0; i < trend.length; i += 2) {
-    const a = trend[i];
-    const b = trend[i + 1];
-    const fullA = String(a?.month ?? "");
-    const [yearA, mA] = fullA.split("-");
-    const mB = b ? String(b.month ?? "").split("-")[1] ?? "" : "";
-    const yearB = b ? String(b.month ?? "").split("-")[0] : yearA;
-
-    const label = b
-      ? `${parseInt(mA)}-${parseInt(mB)}月`
-      : `${parseInt(mA)}月`;
-
-    // Show year when it first appears or changes
-    const displayYear = yearA !== lastYear ? `${yearA}` : yearB !== yearA && yearB !== lastYear ? `${yearA}` : undefined;
-    lastYear = yearB || yearA;
-
-    groups.push({
-      label,
-      sublabel: displayYear,
-      her: Number(a?.[p1] ?? 0) + Number(b?.[p1] ?? 0),
-      him: Number(a?.[p2] ?? 0) + Number(b?.[p2] ?? 0),
-    });
-  }
-  return groups;
+  let lastMonth = "";
+  return trend.map((entry) => {
+    const period = String(entry.period ?? "");
+    const day = period.slice(8, 10).replace(/^0/, "");
+    const month = period.slice(5, 7).replace(/^0/, "");
+    const showMonth = month !== lastMonth;
+    lastMonth = month;
+    return {
+      label: `${month}/${day}`,
+      sublabel: showMonth ? `${period.slice(0, 4)}` : undefined,
+      her: Number(entry[p1] ?? 0),
+      him: Number(entry[p2] ?? 0),
+    };
+  });
 }
 
 function buildWeeklyGroups(
@@ -53,42 +41,64 @@ function buildWeeklyGroups(
   p2: string,
 ): BarGroup[] {
   const groups: BarGroup[] = [];
-  const recent = trend.slice(-3);
-  let w = 1;
-  for (const entry of recent) {
-    const month = String(entry.month ?? "").split("-")[1] ?? "";
-    for (let i = 0; i < 4; i++) {
-      const f = [0.22, 0.26, 0.28, 0.24][i];
+  let weekHer = 0;
+  let weekHim = 0;
+  let weekStartPeriod = "";
+  let lastMonth = "";
+
+  for (let i = 0; i < trend.length; i++) {
+    const entry = trend[i];
+    const period = String(entry.period ?? "");
+    if (!weekStartPeriod) weekStartPeriod = period;
+    weekHer += Number(entry[p1] ?? 0);
+    weekHim += Number(entry[p2] ?? 0);
+
+    if ((i + 1) % 7 === 0 || i === trend.length - 1) {
+      const sm = weekStartPeriod.slice(5, 7).replace(/^0/, "");
+      const sd = weekStartPeriod.slice(8, 10).replace(/^0/, "");
+      const ed = period.slice(8, 10).replace(/^0/, "");
+      const showMonth = sm !== lastMonth;
+      lastMonth = sm;
       groups.push({
-        label: `W${w}`,
-        sublabel: i === 0 ? `${parseInt(month)}月` : undefined,
-        her: Math.round(Number(entry[p1] ?? 0) * f),
-        him: Math.round(Number(entry[p2] ?? 0) * f),
+        label: `${sd}-${ed}`,
+        sublabel: showMonth ? `${sm}月` : undefined,
+        her: weekHer,
+        him: weekHim,
       });
-      w++;
+      weekHer = 0;
+      weekHim = 0;
+      weekStartPeriod = "";
     }
   }
   return groups;
 }
 
-function buildDailyGroups(
+function buildMonthlyGroups(
   trend: Array<Record<string, string | number>>,
   p1: string,
   p2: string,
 ): BarGroup[] {
-  const last = trend[trend.length - 1];
-  if (!last) return [];
-  const herT = Number(last[p1] ?? 0);
-  const himT = Number(last[p2] ?? 0);
-  const month = String(last.month ?? "").split("-")[1] ?? "";
+  const monthMap = new Map<string, { her: number; him: number }>();
+  for (const entry of trend) {
+    const period = String(entry.period ?? "");
+    const monthKey = period.slice(0, 7);
+    const existing = monthMap.get(monthKey) ?? { her: 0, him: 0 };
+    existing.her += Number(entry[p1] ?? 0);
+    existing.him += Number(entry[p2] ?? 0);
+    monthMap.set(monthKey, existing);
+  }
+
   const groups: BarGroup[] = [];
-  for (let d = 1; d <= 10; d++) {
-    const v = 0.7 + Math.sin(d * 1.2) * 0.3 + (d % 3 === 0 ? 0.2 : 0);
+  let lastYear = "";
+  for (const [monthKey, counts] of monthMap) {
+    const [year, m] = monthKey.split("-");
+    const showYear = year !== lastYear;
+    lastYear = year;
     groups.push({
-      label: `${d}`,
-      sublabel: d === 1 ? `${parseInt(month)}月` : undefined,
-      her: Math.round((herT / 30) * v),
-      him: Math.round((himT / 30) * v),
+      label: `${parseInt(m)}月`,
+      sublabel: showYear ? year : undefined,
+      her: counts.her,
+      him: counts.him,
     });
   }
   return groups;
@@ -100,36 +110,85 @@ const TABS: { key: ViewMode; label: string }[] = [
   { key: "month", label: "月" },
 ];
 
-const BAR_WIDTH: Record<ViewMode, number> = { month: 20, week: 16, day: 14 };
+const VISIBLE_BARS: Record<ViewMode, number> = { day: 30, week: 14, month: 12 };
 
 export function TrendChart({ result }: Props) {
   const [view, setView] = useState<ViewMode>("month");
   const { trend } = result.timePatterns;
   const [p1, p2] = result.persons;
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [slotWidth, setSlotWidth] = useState(60);
 
-  const groups = useMemo(() =>
+  const allGroups = useMemo(() =>
     view === "month" ? buildMonthlyGroups(trend, p1, p2)
       : view === "week" ? buildWeeklyGroups(trend, p1, p2)
         : buildDailyGroups(trend, p1, p2),
     [view, trend, p1, p2],
   );
 
-  const maxVal = Math.max(...groups.flatMap((g) => [g.her, g.him]), 1);
-  const barW = BAR_WIDTH[view];
+  const maxTotal = Math.max(...allGroups.map((g) => g.her + g.him), 1);
+  const maxSingle = Math.max(...allGroups.flatMap((g) => [g.her, g.him]), 1);
 
   let peakIdx = 0;
   let peakTotal = 0;
-  groups.forEach((g, i) => {
+  allGroups.forEach((g, i) => {
     const t = g.her + g.him;
     if (t > peakTotal) { peakTotal = t; peakIdx = i; }
   });
 
-  const peakLabel = groups[peakIdx]?.label ?? "";
-  const firstTotal = groups[0] ? groups[0].her + groups[0].him : 1;
-  const ratio = firstTotal > 0 ? (peakTotal / firstTotal).toFixed(1) : "—";
+  // Calculate slot width based on container width / 7
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width ?? 420;
+      setSlotWidth(Math.floor(w / VISIBLE_BARS[view]));
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [view]);
+
+  // Scroll to rightmost (most recent) on view change
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) {
+      requestAnimationFrame(() => {
+        el.scrollLeft = el.scrollWidth;
+      });
+    }
+  }, [view, slotWidth]);
+
+  // Drag to scroll
+  const isDragging = useRef(false);
+  const dragStartX = useRef(0);
+  const dragStartScroll = useRef(0);
+
+  const onPointerDown = useCallback((e: React.PointerEvent) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    isDragging.current = true;
+    dragStartX.current = e.clientX;
+    dragStartScroll.current = el.scrollLeft;
+    el.setPointerCapture(e.pointerId);
+    el.style.cursor = "grabbing";
+  }, []);
+
+  const onPointerMove = useCallback((e: React.PointerEvent) => {
+    if (!isDragging.current || !scrollRef.current) return;
+    scrollRef.current.scrollLeft = dragStartScroll.current - (e.clientX - dragStartX.current);
+  }, []);
+
+  const onPointerUp = useCallback(() => {
+    isDragging.current = false;
+    if (scrollRef.current) scrollRef.current.style.cursor = "grab";
+  }, []);
+
+  const totalWidth = allGroups.length * slotWidth;
 
   return (
     <div
+      ref={containerRef}
       className="rounded-[16px] sm:rounded-[20px] border border-border-light bg-white p-4 sm:p-6 md:px-8"
     >
       {/* Header */}
@@ -139,7 +198,7 @@ export function TrendChart({ result }: Props) {
             聊天頻率趨勢
           </h3>
           <p className="font-body text-[13px] text-text-secondary">
-            隨時間演進的訊息量變化 — 粉色為 {p1}、紫色為 {p2}
+            粉色為 {p1}、紫色為 {p2} — 左右拖移查看更多
           </p>
         </div>
         <div className="flex shrink-0 rounded-xl p-1" style={{ backgroundColor: "#F3E8EE" }}>
@@ -164,82 +223,153 @@ export function TrendChart({ result }: Props) {
         </div>
       </div>
 
-      {/* Chart area — fixed dimensions */}
+      {/* Scrollable chart */}
       <div
-        className="relative mt-4 sm:mt-5 flex items-end overflow-hidden rounded-xl"
-        style={{ height: 220, gap: 6, padding: "20px 8px 0 8px", backgroundColor: "#FEFAFC" }}
+        ref={scrollRef}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        className="mt-4 sm:mt-5 overflow-x-auto select-none"
+        style={{ scrollbarWidth: "none", cursor: "grab" }}
       >
-        {groups.map((group, idx) => {
-          const herH = Math.max(Math.round((group.her / maxVal) * 160), 4);
-          const himH = Math.max(Math.round((group.him / maxVal) * 160), 4);
-          const isPeak = idx === peakIdx;
+        <div
+          className="relative rounded-xl"
+          style={{
+            height: 240,
+            backgroundColor: "#FEFAFC",
+            width: totalWidth,
+          }}
+        >
+          {/* Bars layer */}
+          <div
+            className="absolute inset-0 flex items-end"
+            style={{ padding: "20px 0 0 0" }}
+          >
+            {allGroups.map((group, idx) => {
+              const total = group.her + group.him;
+              const totalH = Math.max(Math.round((total / maxTotal) * 170), 6);
+              const herRatio = total > 0 ? group.her / total : 0.5;
+              const herH = Math.round(totalH * herRatio);
+              const himH = totalH - herH;
+              const isPeak = idx === peakIdx;
 
-          return (
-            <div
-              key={`${view}-${idx}`}
-              className="flex flex-1 flex-col items-center"
-              style={{ minWidth: 0, gap: 0 }}
-            >
-              {/* Peak badge — fixed height slot */}
-              <div className="flex h-6 items-center justify-center">
-                {isPeak && (
-                  <span
-                    className="rounded-[10px] font-body text-[10px] font-bold text-rose-primary whitespace-nowrap"
-                    style={{ backgroundColor: "#FFF0F3", padding: "3px 8px" }}
-                  >
-                    Peak!
-                  </span>
-                )}
-              </div>
-
-              {/* Bar pair — fills remaining height, bars anchored to bottom */}
-              <div className="flex flex-1 items-end justify-center" style={{ gap: 3, width: "100%" }}>
+              return (
                 <div
-                  className="rounded-lg transition-all duration-300"
-                  style={{ width: barW, height: herH, backgroundColor: "#E8457E" }}
-                />
-                <div
-                  className="rounded-lg transition-all duration-300"
-                  style={{ width: barW, height: himH, backgroundColor: "#9F7AEA" }}
-                />
-              </div>
-
-              {/* Label — fixed height slot */}
-              <div className="flex h-10 flex-col items-center justify-start pt-1.5">
-                <span
-                  className={`font-body text-[12px] font-semibold leading-tight ${isPeak ? "text-rose-primary" : ""}`}
-                  style={{ color: isPeak ? undefined : "#B8ADC7" }}
+                  key={`${view}-${idx}`}
+                  className="flex flex-col items-center"
+                  style={{ width: slotWidth, flexShrink: 0 }}
                 >
-                  {group.label}
-                </span>
-                {group.sublabel && (
-                  <span className="font-body text-[10px] text-text-muted leading-tight">
-                    {group.sublabel}
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-        })}
+                  {/* Peak badge */}
+                  <div className="flex h-5 items-center justify-center">
+                    {isPeak && (
+                      <span
+                        className="rounded-[8px] font-body text-[9px] font-bold text-rose-primary whitespace-nowrap"
+                        style={{ backgroundColor: "#FFF0F3", padding: "2px 6px" }}
+                      >
+                        Peak!
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Stacked bar */}
+                  <div className="flex flex-1 items-end justify-center">
+                    <div className="flex flex-col rounded-lg overflow-hidden" style={{ width: Math.min(slotWidth * 0.45, 28), opacity: 0.35 }}>
+                      <div
+                        className="transition-all duration-300"
+                        style={{ height: herH, backgroundColor: "#E8457E" }}
+                      />
+                      <div
+                        className="transition-all duration-300"
+                        style={{ height: himH, backgroundColor: "#9F7AEA" }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Label */}
+                  <div className="flex h-10 flex-col items-center justify-start pt-1.5">
+                    <span
+                      className={`font-body text-[10px] sm:text-[11px] font-semibold leading-tight whitespace-nowrap ${isPeak ? "text-rose-primary" : ""}`}
+                      style={{ color: isPeak ? undefined : "#B8ADC7" }}
+                    >
+                      {group.label}
+                    </span>
+                    {group.sublabel && (
+                      <span className="font-body text-[9px] sm:text-[10px] text-text-muted leading-tight">
+                        {group.sublabel}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* SVG line overlay */}
+          <svg
+            className="absolute pointer-events-none"
+            style={{ top: 25, left: 0, width: totalWidth, height: 170 }}
+          >
+            {/* Person 1 line */}
+            <polyline
+              fill="none"
+              stroke="#E8457E"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              points={allGroups
+                .map((g, i) => `${i * slotWidth + slotWidth / 2},${170 - (g.her / maxSingle) * 160}`)
+                .join(" ")}
+            />
+            {/* Person 2 line */}
+            <polyline
+              fill="none"
+              stroke="#9F7AEA"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              points={allGroups
+                .map((g, i) => `${i * slotWidth + slotWidth / 2},${170 - (g.him / maxSingle) * 160}`)
+                .join(" ")}
+            />
+            {/* Dots for person 1 */}
+            {allGroups.map((g, i) => (
+              <circle
+                key={`d1-${i}`}
+                cx={i * slotWidth + slotWidth / 2}
+                cy={170 - (g.her / maxSingle) * 160}
+                r="3"
+                fill="#E8457E"
+              />
+            ))}
+            {/* Dots for person 2 */}
+            {allGroups.map((g, i) => (
+              <circle
+                key={`d2-${i}`}
+                cx={i * slotWidth + slotWidth / 2}
+                cy={170 - (g.him / maxSingle) * 160}
+                r="3"
+                fill="#9F7AEA"
+              />
+            ))}
+          </svg>
+        </div>
       </div>
 
       {/* Legend */}
-      <div className="mt-5 flex items-center justify-center gap-6">
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
         <div className="flex items-center gap-2">
-          <span className="inline-block h-3 w-3 rounded-md" style={{ backgroundColor: "#E8457E" }} />
-          <span className="font-body text-[13px] font-semibold text-text-secondary">{p1} 的訊息量</span>
+          <svg width="16" height="10"><line x1="0" y1="5" x2="16" y2="5" stroke="#E8457E" strokeWidth="2.5" strokeLinecap="round" /><circle cx="8" cy="5" r="2.5" fill="#E8457E" /></svg>
+          <span className="font-body text-[13px] font-semibold text-text-secondary">{p1}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="inline-block h-3 w-3 rounded-md" style={{ backgroundColor: "#9F7AEA" }} />
-          <span className="font-body text-[13px] font-semibold text-text-secondary">{p2} 的訊息量</span>
+          <svg width="16" height="10"><line x1="0" y1="5" x2="16" y2="5" stroke="#9F7AEA" strokeWidth="2.5" strokeLinecap="round" /><circle cx="8" cy="5" r="2.5" fill="#9F7AEA" /></svg>
+          <span className="font-body text-[13px] font-semibold text-text-secondary">{p2}</span>
         </div>
-      </div>
-
-      {/* AI Insight */}
-      <div className="mt-4 sm:mt-5 rounded-[14px] px-3 py-3 sm:px-5 sm:py-4">
-        <p className="font-body text-[12px] sm:text-[13px] font-medium text-text-primary">
-          AI 洞察｜{peakLabel}是你們的升溫期！訊息量是初期的 {ratio} 倍
-        </p>
+        <div className="flex items-center gap-2">
+          <span className="inline-block h-3 w-3 rounded-[3px] opacity-35" style={{ background: "linear-gradient(180deg, #E8457E 50%, #9F7AEA 50%)" }} />
+          <span className="font-body text-[13px] font-semibold text-text-secondary">合計</span>
+        </div>
       </div>
     </div>
   );

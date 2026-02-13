@@ -12,9 +12,9 @@ def _parsed():
 def test_heatmap_shape():
     result = compute_time_patterns(_parsed())
     heatmap = result["heatmap"]
-    # 7 days x 8 time slots (3-hour blocks)
+    # 7 days x 24 hours
     assert len(heatmap) == 7
-    assert all(len(row) == 8 for row in heatmap)
+    assert all(len(row) == 24 for row in heatmap)
 
 
 def test_heatmap_has_values():

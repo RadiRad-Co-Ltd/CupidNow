@@ -1,91 +1,174 @@
+import re
 import json
 import os
 from collections import defaultdict
-from datetime import datetime
 
+import jieba
+from snownlp import SnowNLP
 from app.services.parser import Message
+from app.services.text_analysis import STOP_WORDS
 
-# Lazy import anthropic to allow tests without API key
 _client = None
+
+_NOISE_RE = re.compile(r"^[\d\W\s]+$|^(.)\1+$")
+
+
+def _is_meaningful(content: str) -> bool:
+    """Use jieba + STOP_WORDS to check if a message has real content.
+
+    Segment the message, strip stop words / punctuation / numbers.
+    If nothing remains → trivial message, not worth sending to AI.
+    """
+    text = content.strip()
+    if len(text) <= 1:
+        return False
+    if _NOISE_RE.match(text):
+        return False
+
+    words = jieba.lcut(text)
+    substantive = [
+        w for w in words
+        if len(w) >= 2
+        and w not in STOP_WORDS
+        and not re.match(r"^[\d\W]+$", w)
+        and not re.match(r"^(.)\1+$", w)
+    ]
+    return len(substantive) >= 1
+
+
+def _sentiment_intensity(content: str) -> float:
+    """Return 0~0.5: how emotionally charged this message is.
+
+    SnowNLP returns 0 (negative) ~ 1 (positive).
+    Intensity = distance from neutral (0.5).
+    Strong positive (0.95) → 0.45, strong negative (0.05) → 0.45
+    Neutral (0.50) → 0.0
+    """
+    try:
+        score = SnowNLP(content).sentiments
+        return abs(score - 0.5)
+    except Exception:
+        return 0.0
 
 
 def _get_client():
     global _client
     if _client is None:
-        import anthropic
-        _client = anthropic.AsyncAnthropic()
+        from groq import AsyncGroq
+        _client = AsyncGroq()
     return _client
 
 
 def sample_messages(
-    messages: list[Message], per_day: int = 8
+    messages: list[Message], max_total: int = 500
 ) -> list[Message]:
-    """Sample representative messages per day to reduce API cost."""
+    """Filter out trivial messages, then prioritize by sentiment intensity."""
     if not messages:
         return []
 
-    by_day: dict[str, list[Message]] = defaultdict(list)
-    for m in messages:
-        if m.msg_type == "text":
-            by_day[str(m.timestamp.date())].append(m)
+    # Phase 1: jieba + STOP_WORDS — remove noise
+    meaningful = [
+        m for m in messages
+        if m.msg_type == "text" and _is_meaningful(m.content)
+    ]
 
-    sampled = []
-    for day in sorted(by_day):
-        day_msgs = by_day[day]
-        if len(day_msgs) <= per_day:
-            sampled.extend(day_msgs)
-        else:
-            step = len(day_msgs) / per_day
-            sampled.extend(day_msgs[int(i * step)] for i in range(per_day))
+    # Phase 2: if within budget, return all
+    if len(meaningful) <= max_total:
+        return meaningful
 
-    return sampled
+    # Phase 3: score each message by SnowNLP sentiment intensity,
+    # keep the most emotionally charged ones
+    scored = [(m, _sentiment_intensity(m.content)) for m in meaningful]
+    scored.sort(key=lambda x: x[1], reverse=True)
+    selected = [m for m, _ in scored[:max_total]]
+
+    # Re-sort by timestamp so the AI sees messages in chronological order
+    selected.sort(key=lambda m: m.timestamp)
+    return selected
 
 
 def build_prompt(messages: list[Message], persons: list[str]) -> str:
-    lines = []
+    p1 = persons[0]
+    p2 = persons[1] if len(persons) > 1 else "Person2"
+
+    # Split messages by person for context
+    p1_lines, p2_lines = [], []
     for m in messages:
-        lines.append(f"[{m.timestamp.strftime('%Y-%m-%d %H:%M')}] {m.sender}: {m.content}")
+        content = m.content[:80] if len(m.content) > 80 else m.content
+        line = f"[{m.timestamp.strftime('%m/%d %H:%M')}] {content}"
+        if m.sender == p1:
+            p1_lines.append(line)
+        else:
+            p2_lines.append(line)
 
-    conversation = "\n".join(lines)
-    p1, p2 = persons[0], persons[1] if len(persons) > 1 else "Person2"
+    # Also build interleaved timeline for context
+    timeline = []
+    for m in messages:
+        content = m.content[:80] if len(m.content) > 80 else m.content
+        timeline.append(f"[{m.timestamp.strftime('%m/%d %H:%M')}] {m.sender}: {content}")
 
-    return f"""你是一位專業的聊天對話分析師。請分析以下 {p1} 和 {p2} 之間的對話摘錄，回傳 JSON 格式結果。
+    return f"""你是一位超級懂感情的閨蜜分析師，說話活潑、帶點俏皮，擅長從聊天記錄中看出兩個人之間的微妙互動和化學反應。
 
-對話摘錄：
-{conversation}
+以下是 {p1} 和 {p2} 的聊天記錄。他們可能是情侶、曖昧中、剛認識、或是好朋友，請你從對話內容自行判斷兩人目前的關係階段，再給出分析。
 
-請回傳以下 JSON（不要加 markdown code block）：
+── {p1} 說的話 ──
+{chr(10).join(p1_lines[-80:])}
+
+── {p2} 說的話 ──
+{chr(10).join(p2_lines[-80:])}
+
+── 完整對話時間軸（看互動節奏）──
+{chr(10).join(timeline[-120:])}
+
+請綜合以上內容，回傳以下 JSON（不要加 markdown code block、不要加任何其他文字）：
 {{
   "loveScore": {{
-    "score": <0-100 的整數，代表兩人的心動/互動指數>,
-    "comment": "<一段 50 字以內的中文整體評語>"
+    "score": <0-100 心動指數，請參考以下五個維度綜合評分，但你也可以根據對話特色自行調整權重：
+      甜度/撒嬌頻率（約 25%）：甜蜜訊息的佔比和濃度
+      主動性平衡（約 20%）：雙方主動發訊的比例是否均衡，還是單方面在追
+      曖昧/放電（約 20%）：調情、試探、暗示、撩的頻率和程度
+      默契度（約 20%）：回覆速度、話題銜接順暢度、互相呼應的程度
+      衝突修復力（約 15%）：吵架或冷淡後多快回溫、有沒有主動破冰
+    >,
+    "comment": "<50 字以內的活潑評語，像閨蜜在旁邊幫你分析對方的語氣，根據關係階段給出不同風格的點評>"
   }},
   "sentiment": {{
-    "sweet": <甜蜜訊息佔比 0-100>,
-    "flirty": <曖昧/調情佔比 0-100>,
-    "daily": <日常分享佔比 0-100>,
-    "conflict": <爭吵/不滿佔比 0-100>,
-    "missing": <思念佔比 0-100>
+    "sweet": <甜蜜撒嬌佔比 0-100>,
+    "flirty": <曖昧放電、試探、調情佔比 0-100>,
+    "daily": <柴米油鹽日常佔比 0-100>,
+    "conflict": <火藥味、冷淡、不耐煩佔比 0-100>,
+    "missing": <想念、捨不得、在意對方佔比 0-100>
   }},
   "goldenQuotes": {{
     "sweetest": [
-      {{"quote": "<原文>", "sender": "<發送者>", "date": "<日期>"}},
+      {{"quote": "<原文>", "sender": "<誰說的>", "date": "<幾月/幾日>"}},
+      {{"quote": "<原文>", "sender": "<誰說的>", "date": "<幾月/幾日>"}},
+      {{"quote": "<原文>", "sender": "<誰說的>", "date": "<幾月/幾日>"}}
     ],
     "funniest": [
-      {{"quote": "<原文>", "sender": "<發送者>", "date": "<日期>"}}
+      {{"quote": "<原文>", "sender": "<誰說的>", "date": "<幾月/幾日>"}},
+      {{"quote": "<原文>", "sender": "<誰說的>", "date": "<幾月/幾日>"}},
+      {{"quote": "<原文>", "sender": "<誰說的>", "date": "<幾月/幾日>"}}
     ],
     "mostTouching": [
-      {{"quote": "<原文>", "sender": "<發送者>", "date": "<日期>"}}
+      {{"quote": "<原文>", "sender": "<誰說的>", "date": "<幾月/幾日>"}},
+      {{"quote": "<原文>", "sender": "<誰說的>", "date": "<幾月/幾日>"}},
+      {{"quote": "<原文>", "sender": "<誰說的>", "date": "<幾月/幾日>"}}
     ]
   }},
-  "insight": "<一段 100 字以內的中文深度洞察，描述兩人的互動模式和關係特色>"
+  "insight": "<100 字以內，用活潑的語氣描述 {p1} 和 {p2} 的關係階段和互動模式，例如誰比較主動、誰在等對方出招、曖昧濃度有多高、有沒有什麼讓人心動的小細節>",
+  "advice": [
+    "<一句具體的聊天建議，針對 {p1}，可以是正面鼓勵也可以是善意提醒，例如回覆太慢、太已讀不回、話題太乾、或是某個做得很好的地方>",
+    "<一句具體的聊天建議，針對 {p2}，同上>",
+    "<一句針對兩人互動的整體建議，例如聊天節奏、話題深度、主動性落差、或是可以嘗試的互動方式>"
+  ]
 }}"""
 
 
 async def analyze_with_ai(
     messages: list[Message], persons: list[str]
 ) -> dict:
-    """Call Claude API for sentiment analysis and golden quotes."""
+    """Call Groq API for sentiment analysis and golden quotes."""
     sampled = sample_messages(messages)
     if not sampled:
         return _fallback_result()
@@ -93,19 +176,18 @@ async def analyze_with_ai(
     prompt = build_prompt(sampled, persons)
     client = _get_client()
 
-    response = await client.messages.create(
-        model="claude-sonnet-4-5-20250929",
-        max_tokens=1500,
+    response = await client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        max_tokens=2000,
+        temperature=0.5,
         messages=[{"role": "user", "content": prompt}],
     )
 
-    text = response.content[0].text.strip()
+    text = response.choices[0].message.content.strip()
 
-    # Try to parse JSON from response
     try:
         return json.loads(text)
     except json.JSONDecodeError:
-        # Try to extract JSON from markdown code block
         if "```" in text:
             json_str = text.split("```")[1]
             if json_str.startswith("json"):
@@ -120,4 +202,5 @@ def _fallback_result() -> dict:
         "sentiment": {"sweet": 20, "flirty": 20, "daily": 40, "conflict": 10, "missing": 10},
         "goldenQuotes": {"sweetest": [], "funniest": [], "mostTouching": []},
         "insight": "對話內容不足，建議上傳更長的對話記錄以獲得更準確的分析。",
+        "advice": [],
     }

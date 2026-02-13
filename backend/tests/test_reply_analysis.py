@@ -28,19 +28,24 @@ def test_avg_reply_time():
 def test_speed_distribution():
     result = compute_reply_behavior(_parsed())
     dist = result["speedDistribution"]
-    # Should have categories
-    assert "under1min" in dist
-    assert "1to5min" in dist
-    assert "5to30min" in dist
-    assert "30to60min" in dist
-    assert "over60min" in dist
+    assert "<1m" in dist
+    assert "1-5m" in dist
+    assert "5-30m" in dist
+    assert "30m-1h" in dist
+    assert ">1h" in dist
 
 
-def test_topic_initiator():
+def test_longest_streak():
     result = compute_reply_behavior(_parsed())
-    init = result["topicInitiator"]
-    total = sum(init[p] for p in init)
-    assert total >= 1
+    streak = result["longestStreak"]
+    assert streak["count"] >= 1
+    assert streak["date"] != ""
+
+
+def test_left_on_read():
+    result = compute_reply_behavior(_parsed())
+    lor = result["leftOnRead"]
+    assert isinstance(lor, dict)
 
 
 def test_single_message_returns_empty_result():

@@ -37,7 +37,8 @@ export const mockResult: AnalysisResult = {
     instantReplyRate: { "小美": 0.58, "阿明": 0.43 },
     avgReplyTime: { "小美": 120, "阿明": 210 },
     speedDistribution: { "<1m": 42, "1-5m": 26, "5-30m": 19, "30m-1h": 8, ">1h": 5 },
-    topicInitiator: { "小美": 412, "阿明": 287 },
+    longestStreak: { count: 47, date: "2024-08-15" },
+    leftOnRead: { "小美": 12, "阿明": 18 },
   },
   timePatterns: {
     heatmap: [
@@ -49,26 +50,28 @@ export const mockResult: AnalysisResult = {
       [5, 3, 1, 0, 0, 0, 2, 4, 6, 10, 8, 7, 12, 14, 10, 8, 15, 18, 28, 32, 38, 35, 25, 10],
       [6, 4, 2, 0, 0, 0, 2, 5, 7, 8, 6, 8, 10, 12, 8, 6, 12, 16, 24, 30, 35, 32, 22, 8],
     ],
-    trend: [
-      { month: "2024-01", "小美": 320, "阿明": 260 },
-      { month: "2024-02", "小美": 580, "阿明": 470 },
-      { month: "2024-03", "小美": 720, "阿明": 580 },
-      { month: "2024-04", "小美": 890, "阿明": 730 },
-      { month: "2024-05", "小美": 1280, "阿明": 1050 },
-      { month: "2024-06", "小美": 1420, "阿明": 1180 },
-      { month: "2024-07", "小美": 1350, "阿明": 1120 },
-      { month: "2024-08", "小美": 980, "阿明": 850 },
-      { month: "2024-09", "小美": 1150, "阿明": 960 },
-      { month: "2024-10", "小美": 1280, "阿明": 1070 },
-      { month: "2024-11", "小美": 1450, "阿明": 1210 },
-      { month: "2024-12", "小美": 1520, "阿明": 1290 },
-      { month: "2025-01", "小美": 1600, "阿明": 1350 },
-      { month: "2025-02", "小美": 435, "阿明": 372 },
-    ],
+    trend: (() => {
+      // Generate 90 days of mock daily data
+      const data: Array<Record<string, string | number>> = [];
+      const start = new Date("2024-11-01");
+      for (let i = 0; i < 90; i++) {
+        const d = new Date(start);
+        d.setDate(d.getDate() + i);
+        const period = d.toISOString().slice(0, 10);
+        const base = 10 + Math.sin(i * 0.15) * 8 + (i > 45 ? 5 : 0);
+        data.push({
+          period,
+          "小美": Math.round(base + Math.random() * 6),
+          "阿明": Math.round(base * 0.85 + Math.random() * 5),
+        });
+      }
+      return data;
+    })(),
     goodnightAnalysis: {
       whoSaysGoodnightFirst: { "小美": 78, "阿明": 22 },
       whoSaysGoodmorningFirst: { "阿明": 65, "小美": 35 },
       avgLastChatTime: 1.383,
+      avgBedtimeChatMinutes: 42,
     },
   },
   coldWars: [
@@ -148,5 +151,10 @@ export const mockResult: AnalysisResult = {
     },
     insight:
       "你們的對話以正面情緒為主基調，日常分享佔了很大比例，代表彼此在對方生活中越來越重要。摩擦比例極低（僅 4%），而且每次低潮都能很快回溫，說明你們的互動品質很高。",
+    advice: [
+      "小美的回覆速度很快，但有時候可以慢一拍，讓對方多主動一點，別讓自己太累！",
+      "阿明偶爾會已讀不回，如果當下真的很忙，一句「等等回你」就能讓對方安心很多。",
+      "你們的聊天話題集中在日常瑣事，試著偶爾聊聊未來的計畫或彼此的夢想，會讓關係更有深度。",
+    ],
   },
 };

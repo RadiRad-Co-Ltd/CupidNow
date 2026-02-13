@@ -4,61 +4,33 @@ interface Props {
   result: AnalysisResult;
 }
 
-const TIME_LABELS = [
-  "0-3",
-  "3-6",
-  "6-9",
-  "9-12",
-  "12-15",
-  "15-18",
-  "18-21",
-  "21-24",
-];
-
+const HOUR_LABELS = Array.from({ length: 24 }, (_, i) => `${i}`);
 const DAY_LABELS = ["週一", "週二", "週三", "週四", "週五", "週六", "週日"];
-
-/** Aggregate a 24-hour row into 8 three-hour buckets. */
-function bucketize(row: number[]): number[] {
-  if (row.length <= 8) return row;
-  const buckets: number[] = [];
-  for (let i = 0; i < 8; i++) {
-    const start = i * 3;
-    buckets.push(
-      (row[start] ?? 0) + (row[start + 1] ?? 0) + (row[start + 2] ?? 0)
-    );
-  }
-  return buckets;
-}
 
 /** Map a value in [0, max] to a heat opacity on #E8457E. */
 function heatColor(value: number, max: number): string {
   if (max === 0 || value === 0) return "#E8457E08";
   const ratio = value / max;
-  // Map to hex alpha: 06 → FF
   const alpha = Math.round(0x06 + ratio * (0xff - 0x06));
   return `#E8457E${alpha.toString(16).padStart(2, "0")}`;
 }
 
 export function TimeHeatmap({ result }: Props) {
   const { heatmap } = result.timePatterns;
-  const bucketed = heatmap.map(bucketize);
 
   // Find global max for normalization
-  const max = bucketed.reduce(
-    (m, row) => Math.max(m, ...row),
-    0,
-  );
+  const max = heatmap.reduce((m, row) => Math.max(m, ...row), 0);
 
   // Find peak cell
   let peakDay = 0;
-  let peakCol = 0;
+  let peakHour = 0;
   let peakVal = 0;
-  bucketed.forEach((row, di) => {
+  heatmap.forEach((row, di) => {
     row.forEach((v, ci) => {
       if (v > peakVal) {
         peakVal = v;
         peakDay = di;
-        peakCol = ci;
+        peakHour = ci;
       }
     });
   });
@@ -67,34 +39,34 @@ export function TimeHeatmap({ result }: Props) {
     <div className="rounded-[16px] sm:rounded-[20px] border border-border-light bg-white p-4 sm:p-6 md:px-8">
       {/* Scrollable on mobile */}
       <div className="overflow-x-auto -mx-1">
-        <div className="min-w-[400px]">
-          {/* Time labels header */}
-          <div className="flex items-center gap-1 mb-1 pl-10 sm:pl-14">
-            {TIME_LABELS.map((label, i) => (
+        <div className="min-w-[560px]">
+          {/* Hour labels header — show every 3 hours */}
+          <div className="flex items-center gap-[2px] mb-1 pl-10 sm:pl-14">
+            {HOUR_LABELS.map((label, i) => (
               <div
-                key={label}
-                className={`flex-1 text-center font-body text-[10px] sm:text-[11px] font-semibold ${
-                  i >= 6 ? "text-text-primary" : "text-text-muted"
+                key={i}
+                className={`flex-1 text-center font-body text-[9px] sm:text-[10px] font-semibold ${
+                  i >= 18 ? "text-text-primary" : "text-text-muted"
                 }`}
               >
-                {label}
+                {i % 3 === 0 ? label : ""}
               </div>
             ))}
           </div>
 
           {/* Heatmap rows */}
-          <div className="flex flex-col gap-1">
-            {bucketed.map((row, dayIdx) => (
-              <div key={dayIdx} className="flex items-center gap-1">
+          <div className="flex flex-col gap-[2px]">
+            {heatmap.map((row, dayIdx) => (
+              <div key={dayIdx} className="flex items-center gap-[2px]">
                 <div className="w-10 sm:w-12 shrink-0 font-body text-[11px] sm:text-[12px] font-semibold text-text-secondary">
                   {DAY_LABELS[dayIdx]}
                 </div>
                 {row.map((value, colIdx) => (
                   <div
                     key={colIdx}
-                    className="h-6 sm:h-8 flex-1 rounded-[4px] sm:rounded-[6px]"
+                    className="h-5 sm:h-7 flex-1 rounded-[3px] sm:rounded-[4px]"
                     style={{ backgroundColor: heatColor(value, max) }}
-                    title={`${DAY_LABELS[dayIdx]} ${TIME_LABELS[colIdx]}：${value} 則`}
+                    title={`${DAY_LABELS[dayIdx]} ${colIdx}:00-${colIdx}:59：${value} 則`}
                   />
                 ))}
               </div>
@@ -115,7 +87,7 @@ export function TimeHeatmap({ result }: Props) {
               <span className="font-body text-[11px] sm:text-[12px] text-text-muted">多</span>
             </div>
             <span className="font-body text-[12px] sm:text-[13px] font-semibold text-rose-primary">
-              最活躍：{DAY_LABELS[peakDay]} {TIME_LABELS[peakCol]}
+              最活躍：{DAY_LABELS[peakDay]} {peakHour}:00
             </span>
           </div>
         </div>

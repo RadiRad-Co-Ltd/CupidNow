@@ -34,11 +34,7 @@ function getTopPersonWithPercent(record: Record<string, number>): string {
 
 export function GoodnightAnalysis({ result }: Props) {
   const { goodnightAnalysis } = result.timePatterns;
-  // Estimate avg bedtime chat length (rough: time from 11pm to last chat)
-  const chatMinutes = Math.max(
-    Math.round((goodnightAnalysis.avgLastChatTime + 24 - 23) * 60 % (24 * 60)),
-    15
-  );
+  const chatMinutes = goodnightAnalysis.avgBedtimeChatMinutes ?? 0;
 
   const cards: NightCard[] = [
     {

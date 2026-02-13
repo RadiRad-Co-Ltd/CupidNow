@@ -17,9 +17,10 @@ const PILL_STYLES = [
 ] as const;
 
 function computeFontSize(count: number, maxCount: number, minCount: number): number {
-  if (maxCount === minCount) return 18;
+  if (maxCount === minCount) return 20;
   const ratio = (count - minCount) / (maxCount - minCount);
-  return Math.round(13 + ratio * 19);
+  // 12px (smallest) → 42px (largest), exponential curve for more contrast
+  return Math.round(12 + Math.pow(ratio, 0.6) * 30);
 }
 
 export function WordCloud({ result }: Props) {
@@ -37,7 +38,8 @@ export function WordCloud({ result }: Props) {
       {/* Word cloud cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
         {persons.map((person, personIdx) => {
-          const words = wordCloud[person] ?? [];
+          const allWords = wordCloud[person] ?? [];
+          const words = allWords.slice(0, 40);
           const counts = words.map((w) => w.count);
           const maxCount = Math.max(...counts, 1);
           const minCount = Math.min(...counts, 0);
@@ -47,7 +49,7 @@ export function WordCloud({ result }: Props) {
           return (
             <div
               key={person}
-              className="rounded-[20px] border border-border-light bg-white p-7"
+              className="rounded-[16px] sm:rounded-[20px] border border-border-light bg-white p-5 sm:p-7"
             >
               {/* Person label with dot */}
               <div className="mb-4 flex items-center gap-2">
@@ -60,19 +62,21 @@ export function WordCloud({ result }: Props) {
                 </span>
               </div>
 
-              {/* Word display area */}
+              {/* Word display area — auto height, no overflow hidden */}
               <div
-                className="flex h-[160px] sm:h-[220px] flex-wrap items-center justify-center gap-x-2 sm:gap-x-3 gap-y-2 overflow-hidden rounded-[12px] sm:rounded-[16px] p-3 sm:p-4"
-                style={{ backgroundColor: personIdx === 0 ? "#FFF0F3" : "#EDE4F520" }}
+                className="flex min-h-[200px] flex-wrap items-center justify-center gap-x-3 gap-y-1.5 rounded-[12px] sm:rounded-[16px] p-4 sm:p-5"
+                style={{ backgroundColor: personIdx === 0 ? "#FFF0F3" : "#F3EDF8" }}
               >
                 {words.map((w, wIdx) => (
                   <span
                     key={w.word}
-                    className="font-heading font-bold transition-transform hover:scale-110"
+                    className="font-heading font-bold leading-tight transition-transform hover:scale-110 cursor-default"
                     style={{
                       fontSize: `${computeFontSize(w.count, maxCount, minCount)}px`,
                       color: colors[wIdx % colors.length],
+                      lineHeight: 1.2,
                     }}
+                    title={`${w.word}：${w.count} 次`}
                   >
                     {w.word}
                   </span>

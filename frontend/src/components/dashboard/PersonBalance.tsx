@@ -16,15 +16,8 @@ interface BarRow {
 export function PersonBalance({ result }: Props) {
   const [person1, person2] = result.persons;
   const bal = result.basicStats.personBalance;
-  const topic = result.replyBehavior.topicInitiator;
 
   const get = (person: string, key: string) => bal?.[person]?.[key] ?? { count: 0, percent: 50 };
-
-  // Compute topic initiator percentages
-  const herTopics = topic[person1] ?? 0;
-  const himTopics = topic[person2] ?? 0;
-  const totalTopics = herTopics + himTopics || 1;
-  const herTopicPct = Math.round((herTopics / totalTopics) * 100);
 
   const rows: BarRow[] = [
     {
@@ -52,20 +45,12 @@ export function PersonBalance({ result }: Props) {
       showCounts: true,
     },
     {
-      label: "話題發起",
-      herCount: herTopics,
-      herPct: herTopicPct,
-      himCount: himTopics,
-      himPct: 100 - herTopicPct,
-      showCounts: false,
-    },
-    {
       label: "語音通話發起",
       herCount: get(person1, "call").count,
       herPct: get(person1, "call").percent,
       himCount: get(person2, "call").count,
       himPct: get(person2, "call").percent,
-      showCounts: false,
+      showCounts: true,
     },
   ];
 

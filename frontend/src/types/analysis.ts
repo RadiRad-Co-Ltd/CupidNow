@@ -28,7 +28,8 @@ export interface ReplyBehavior {
   instantReplyRate: Record<string, number>;
   avgReplyTime: Record<string, number>;
   speedDistribution: Record<string, number>;
-  topicInitiator: Record<string, number>;
+  longestStreak: { count: number; date: string };
+  leftOnRead: Record<string, number>;
 }
 
 export interface TimePatterns {
@@ -38,6 +39,7 @@ export interface TimePatterns {
     whoSaysGoodnightFirst: Record<string, number>;
     whoSaysGoodmorningFirst: Record<string, number>;
     avgLastChatTime: number;
+    avgBedtimeChatMinutes: number;
   };
 }
 
@@ -61,6 +63,7 @@ export interface AIAnalysis {
     mostTouching: Quote[];
   };
   insight: string;
+  advice?: string[];
 }
 
 interface Quote {
