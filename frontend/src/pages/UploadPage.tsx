@@ -75,6 +75,7 @@ export function UploadPage({ onResult }: Props) {
       const decoder = new TextDecoder();
       let buffer = "";
       let finalResult: AnalysisResult | null = null;
+      let aiWarning: string | null = null;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -99,6 +100,7 @@ export function UploadPage({ onResult }: Props) {
             if (evt.error) throw new Error(evt.error);
             if (evt.progress != null) setProgress(evt.progress);
             if (evt.stage) setStage(evt.stage);
+            if (evt.warning) aiWarning = evt.warning;
             if (evt.result) finalResult = evt.result as AnalysisResult;
           } catch {
             // Incomplete or malformed event — skip
@@ -109,8 +111,8 @@ export function UploadPage({ onResult }: Props) {
       if (!finalResult) throw new Error("未收到分析結果");
 
       setProgress(100);
-      setStage("完成！");
-      await new Promise((r) => setTimeout(r, 400));
+      setStage(aiWarning ? "完成！（AI 分析暫時不可用）" : "完成！");
+      await new Promise((r) => setTimeout(r, aiWarning ? 1500 : 400));
       onResult(finalResult);
       navigate("/dashboard");
     } catch (e) {

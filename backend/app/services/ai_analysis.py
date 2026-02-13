@@ -239,6 +239,11 @@ def build_prompt(messages: list[Message], persons: list[str], stats: dict | None
 }}"""
 
 
+class AIRateLimitError(Exception):
+    """Raised when the AI API returns 429 Too Many Requests."""
+    pass
+
+
 async def analyze_with_ai(
     messages: list[Message], persons: list[str], stats: dict | None = None,
 ) -> dict:
@@ -250,12 +255,18 @@ async def analyze_with_ai(
     prompt = build_prompt(sampled, persons, stats)
     client = _get_client()
 
-    response = await client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        max_tokens=3000,
-        temperature=0.5,
-        messages=[{"role": "user", "content": prompt}],
-    )
+    try:
+        response = await client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            max_tokens=3000,
+            temperature=0.5,
+            messages=[{"role": "user", "content": prompt}],
+        )
+    except Exception as e:
+        if "429" in str(e) or "rate_limit" in str(e).lower():
+            logger.warning("AI rate limited: %s", e)
+            raise AIRateLimitError("AI 分析額度已達上限，請稍後再試") from e
+        raise
 
     text = response.choices[0].message.content.strip()
     finish_reason = response.choices[0].finish_reason

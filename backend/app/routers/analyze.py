@@ -197,17 +197,22 @@ async def analyze_stream(
         }
 
         ai_result = None
+        ai_warning = None
         if not skip_ai:
             yield _sse_event({"progress": 75, "stage": "AI 正在解讀你們的故事..."})
             await asyncio.sleep(0)
             try:
-                from app.services.ai_analysis import analyze_with_ai
+                from app.services.ai_analysis import analyze_with_ai, AIRateLimitError
                 ai_stats = {
                     "basicStats": basic_stats,
                     "replyBehavior": reply_behavior,
                     "coldWars": cold_wars,
+                    "textAnalysis": text_analysis,
                 }
                 ai_result = await analyze_with_ai(parsed["messages"], persons, ai_stats)
+            except AIRateLimitError:
+                logger.warning("AI rate limited, skipping AI analysis")
+                ai_warning = "AI 分析額度已達今日上限，其他數據分析仍然完整！請稍後再試即可補上 AI 洞察。"
             except Exception:
                 logger.exception("AI analysis failed")
                 ai_result = None
@@ -215,7 +220,10 @@ async def analyze_stream(
         if ai_result:
             result["aiAnalysis"] = ai_result
 
-        yield _sse_event({"progress": 100, "stage": "完成！", "result": result})
+        final_event: dict = {"progress": 100, "stage": "完成！", "result": result}
+        if ai_warning:
+            final_event["warning"] = ai_warning
+        yield _sse_event(final_event)
 
     return StreamingResponse(
         event_stream(),
